@@ -6,6 +6,7 @@
  */ 
 
 var RF = {}; 
+RF.ffts = {}; 
 
 /** Obtain an FFT of the right size 
  *
@@ -14,12 +15,12 @@ var RF = {};
  **/ 
 RF.getFFT =function (size) 
 {
-  if (ffts[size] === undefined)
+  if (this.ffts[size] === undefined)
   {
-    ffts[size] = new FFTR(size); 
+    this.ffts[size] = new FFTR(size); 
   }
 
-  return ffts[size]; 
+  return this.ffts[size]; 
 };
 
 
@@ -89,8 +90,9 @@ RF.makePowerSpectrum = function(g, Y = null)
  * */ 
 RF.upsample = function (g, factor=2, Y = null) 
 {
-  if (factor <=1) return; 
+  if (factor <=1) return RF.doFFT(g.fY); 
 
+  var N = g.fNpoints; 
   var t0 = g.fX[0]; 
   var dt = g.fX[1] - g.fX[0]; 
   if (Y == null) 
@@ -98,17 +100,17 @@ RF.upsample = function (g, factor=2, Y = null)
     Y = RF.doFFT(g.fY); 
   }
 
-  var newY = Float32Array( 2*(g.fNpoints * factor / 2 + 1)); 
+  var newY = new Float32Array( 2*(g.fNpoints * factor / 2 + 1)); 
 
   for (var i = 0; i < Y.length; i++) 
   {
     newY[i] = Y[i]/N; 
   }
 
-  g.fNpoints*= upsample; 
-  g.fY =RF.getFFT(g.fNpoints).inverse(newY); 
+  g.fNpoints*= factor; 
+  g.fY =RF.doInvFFT(newY); 
 
-  for (var i = 0; i < g.fNpoints; i++ 
+  for (var i = 0; i < g.fNpoints; i++ )
   {
     g.fX[i] = dt / factor * i + t0 ;
   }
@@ -122,8 +124,9 @@ RF.hilbertTransform = function(g, Y = null)
 {
 
   if (Y == null) Y = RF.doFFT(g.fY); 
-  var Yp = new Float32Array(Y.length)); 
+  var Yp = new Float32Array(Y.length); 
 
+  var N = g.fNpoints; 
   for (var i = 1; i < g.fNpoints/2; i++) 
   {
 
@@ -135,28 +138,37 @@ RF.hilbertTransform = function(g, Y = null)
   var gh= JSROOT.CreateTGraph(g.fNpoints, g.fX, yp); 
   gh.fName = g.fName + "_hilbert"; 
   gh.fTitle = "Hilbert Transform of " + g.fTitle; 
+  return gh; 
 }
 
 
 /** Creates the hilbert envelope of a graph */ 
 
-RF.hilbertEnvelope = function(g, Y = null, gp = null) 
+RF.hilbertEnvelope = function(g, Y = null, gh = null, H = null) 
 {
-
   if (Y == null) Y = RF.doFFT(g.fY); 
-  if (gp = null) 
-  {
 
-    gp = RF.hilbertTransform(g,Y); 
+  if (gh == null) 
+  {
+    gh = RF.hilbertTransform(g,Y); 
   }
 
-  var H = JSROOT.CreateTGraph(g.fNpoints, g.fX, g.fY); 
+  if (H == null) 
+  {
+    H = JSROOT.CreateTGraph(g.fNpoints, g.fX, g.fY); 
+  }
+  else
+  {
+    H.fNpoints = g.fNpoints; 
+    H.fX = g.fX; 
+    H.fY = []; 
+  }
 
   H.fName = g.fName+"_envelope"; 
   H.fTitle = "Hilbert envelope of " + g.fTitle;
   for (var i = 0; i < g.fNpoints; i++)
   {
-    g.fY[i] = Math.sqrt( g.fY[i] * g.fY[i] + gh.fY[i] * gh.fY[i]); 
+    H.fY[i] = Math.sqrt( g.fY[i] * g.fY[i] + gh.fY[i] * gh.fY[i]); 
   }
 
   H.InvertBit(JSROOT.BIT(18)); //make it uneditable
@@ -197,7 +209,7 @@ RF.rectify = function(g)
 }
 
 
-RF.range(start, N, step = 1) 
+RF.range = function(start, N, step = 1) 
 {
   var ans = Array(N); 
   for (var i = 0; i < N; i++) 
@@ -245,7 +257,7 @@ RF.crossCorrelation = function ( g1, g2, pad=true, upsample = 4)
   }
 
   var y = RF.doInvFFT(Y); 
-  y = y.slice(N,y.length).concat(y.slice(0,N); 
+  y = y.slice(N,y.length).concat(y.slice(0,N)); 
   var x = RF.range(-N*dt, 2*N, dt); 
   var g = JSROOT.CreateTGraph(y.length, x, y); 
 
@@ -265,7 +277,7 @@ RF.evalEven = function (g, t)
   if (l >= g.fNpoints) return 0; 
 
   var f = t - (t0+dt*l) 
-  var f * g.fY[u] + (1-f) * f.fY[l]; 
+  return f * g.fY[u] + (1-f) * g.fY[l]; 
 }
 
 
@@ -283,13 +295,14 @@ RF.Mapper = function (nants, computeDeltaTs, usePair = function(i,j) { return tr
 
 
 
-RF.Antenna(x,y,z, dx,dy,dz, max_phi,max_theta) 
+RF.Antenna = function(x,y,z, dx,dy,dz, max_phi,max_theta) 
 {
   var ant = {};
   ant.pos = [x,y,z];
   ant.bore = [dx,dy,dz]; 
   ant.phi_width = phi_width;
   ant.theta_width = theta_width; 
+  return ant; 
 }
 
 
@@ -392,6 +405,7 @@ RF.AngleMapper = function ( ants,  c = 0.3, phi_0 =0, theta_0 = 0 )
        var between = phi_deg <= max_phi[i] && phi_deg >= min_phi[i]; 
        return  (between && min_phi[i] < max_phi[i]) || (!between && min_phi[i] > max_phi[i]);
     }
+  );
 
 
 }
@@ -453,7 +467,7 @@ RF.InterferometricMap = function ( nx, xmin, xmax, ny, ymin,ymax, mapper)
       {
         if (!mapper.canUse(iant,x,y)) continue; 
 
-        for (var (jant = iant+1; jant < mapper.nant; jant++) 
+        for (var jant = iant+1; jant < mapper.nant; jant++) 
         {
           if (!mapper.canUse(jant,x,y)) continue; 
           if (usepair[iant][jant]) continue;  
