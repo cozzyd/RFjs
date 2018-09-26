@@ -302,7 +302,7 @@ RF.evalEven = function (g, t)
 RF.Mapper = function (nants, computeDeltaTs, usePair = function(i,j) { return true; }, canUse = function(i, x, y) { return true; } ) 
 {
   var m = {}; 
-  m.nants = nants; 
+  m.nant = nants; 
   m.deltaTs = computeDeltaTs; 
   m.usePair = usePair; 
   m.canUse = canUse; 
@@ -317,8 +317,8 @@ RF.Antenna = function(x,y,z, dx,dy,dz, max_phi,max_theta)
   var ant = {};
   ant.pos = [x,y,z];
   ant.bore = [dx,dy,dz]; 
-  ant.phi_width = phi_width;
-  ant.theta_width = theta_width; 
+  ant.phi_width = max_phi;
+  ant.theta_width = max_theta; 
   return ant; 
 }
 
