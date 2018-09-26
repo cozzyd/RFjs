@@ -29,7 +29,7 @@ RF.getFFT =function (size)
 RF.doFFT = function (y) 
 {
     var fft = RF.getFFT(y.length); 
-    return fft.forward(y); 
+    return fft.forward(y).slice(0); 
 };
 
 
@@ -37,8 +37,9 @@ RF.doFFT = function (y)
 RF.doInvFFT = function(Y, Nt = 0) 
 {
   var fft = RF.getFFT(Nt == 0 ? Y.length : Nt); 
-  return fft.inverse(Y); 
+  return fft.inverse(Y).slice(0); 
 };
+
 
 
 /** Generates a power spectrum of the given TGraph, returning another TGraph.
@@ -53,7 +54,7 @@ RF.makePowerSpectrum = function(g, Y = null)
   if (Y == null) 
   {
     var fft = RF.getFFT(N); 
-    Y = fft.forward(g.fY); 
+    Y = fft.forward(g.fY).slice(0); 
   }
   var dt = g.fX[1] - g.fX[0]; 
   var df = 1./(N * dt); 
