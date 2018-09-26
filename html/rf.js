@@ -351,13 +351,14 @@ RF.angleBetween = function(x,y)
   return Math.acos( RF.dotProduct(x,y) / (RF.magnitude(x) * RF.magnitude(y))); 
 }
 
+
 /* From  https://stackoverflow.com/questions/966225/how-can-i-create-a-two-dimensional-array-in-javascript */ 
 RF.createArray = function(length) {
     var arr = new Array(length || 0),
         i = length;
     if (arguments.length > 1) {
         var args = Array.prototype.slice.call(arguments, 1);
-        while(i--) arr[length-1 - i] = createArray.apply(this, args);
+        while(i--) arr[length-1 - i] = RF.createArray.apply(this, args);
     }
     return arr;
 }
