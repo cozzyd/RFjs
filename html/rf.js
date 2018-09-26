@@ -331,6 +331,14 @@ RF.dotProduct = function(x,y, Nmax = 0)
   return sum; 
 }
 
+RF.crossProduct = function(u,v) 
+{
+
+  return [ u[1]*v[2] - u[2]*v[1] ,
+           u[2]*v[0] - u[0]*v[2] , 
+           u[0] *v[1] - u[1]*v[0] ]; 
+}
+
 
 RF.magnitude = function(x, Nmax) 
 {
