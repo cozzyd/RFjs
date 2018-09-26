@@ -197,8 +197,9 @@ RF.getRMS = function(g)
   }
   var mean = sum/N;
 
-  return Math.sqrt(sum2/N-mean);
+  return Math.sqrt(sum2/N-mean*mean);
 }
+
 
 
 
