@@ -213,7 +213,7 @@ RF.rectify = function(g)
 
 RF.range = function(start, N, step = 1) 
 {
-  var ans = Array(N); 
+  var ans = new Float32Array(N); 
   for (var i = 0; i < N; i++) 
   {
     ans[i] = start+step*i; 
