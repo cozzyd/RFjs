@@ -80,6 +80,7 @@ RF.makePowerSpectrum = function(g, Y = null)
 
 
 
+
 /** upsamples (in place) a TGraph in the fourier domain 
  *
  *  g: The TGraph
@@ -292,7 +293,7 @@ RF.evalEven = function (g, t)
   if (l < 0) return 0; 
   if (l >= g.fNpoints) return 0; 
 
-  var f = t - (t0+dt*l) 
+  var f = (t - (t0+dt*l))/dt;  
   return f * g.fY[u] + (1-f) * g.fY[l]; 
 }
 
