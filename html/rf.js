@@ -224,12 +224,15 @@ RF.range = function(start, N, step = 1)
 
 
 /* Calculates the cross-correlation of two graphs, returning the cross-correlation the time domain 
- * Asumes they have the same sampling... 
+ * Asumes they have the same sampling and start position 
  * */ 
 
-RF.crossCorrelation = function ( g1, g2, pad=true, upsample = 4) 
+RF.crossCorrelation = function ( g1, g2, pad=true, upsample = 4, scale = null) 
 {
   
+  if (scale == null) scale = RF.getRMS(g1) * RF.getRMS(g2) ;
+
+
   /** most likely we need to pad by a factor of 2 */ 
 
   var N = Math.max(g1.fNpoints, g2.fNpoints); 
@@ -243,25 +246,36 @@ RF.crossCorrelation = function ( g1, g2, pad=true, upsample = 4)
   for (var i = 0; i < g1.fNpoints;i++) y1[i] = g1.fY[i]; 
   for (var i = 0; i < g2.fNpoints;i++) y2[i] = g2.fY[i]; 
 
+
   var Y1 = RF.doFFT(y1); 
   var Y2 = RF.doFFT(y2); 
-  Y = new Float32Array(upsample * Y1.length); 
+
+  var Y = new Float32Array(upsample * Y1.length); 
 
   for (var i = 0; i < N/2+1;i++) 
   {
-    var re1 = Y1[2*i]; 
-    var re2 = Y2[2*i]; 
-    var im1 = Y1[2*i+1]; 
+    var re1 = Y1[2*i];
+    var re2 = Y2[2*i];
+    var im1 = Y1[2*i+1];
     var im2 = Y2[2*i+1]; 
 
-    Y[2*i] = re1*re1 + im1*im2;
-    Y[2*i+1] = im1*re2-re1*im2; 
+    Y[2*i] = (re1*re2 + im1*im2)/scale/N/N;
+    Y[2*i+1] = (im1*re2-re1*im2)/scale/N/N; 
   }
 
   var y = RF.doInvFFT(Y); 
-  y = y.slice(N,y.length).concat(y.slice(0,N)); 
-  var x = RF.range(-N*dt, 2*N, dt); 
-  var g = JSROOT.CreateTGraph(y.length, x, y); 
+  var yrotated = new Float32Array (y.length); 
+  for (var i = 0; i < y.length; i++) 
+  {
+    yrotated[i] = y[(i+y.length/2) % y.length];
+  }
+
+  N = y.length; 
+  dt = dt/upsample; 
+  var x = RF.range(-N/2*dt, N, dt); 
+  var g = JSROOT.CreateTGraph(y.length, x, yrotated); 
+
+  g.fYitle = "Correlation of" + g1.fTitle + " with " + g2.fTitle; 
 
   return g; 
 }
