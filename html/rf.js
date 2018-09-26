@@ -384,10 +384,29 @@ RF.AngleMapper = function ( ants,  c = 0.3, phi_0 =0, theta_0 = 0 )
     var bore_phi = 180./Math.PI* Math.atan2(ants[i].bore[1], ants[i].bore[0]) + phi_0; //check the sign
     var bore_theta = 180./Math.PI* Math.asin(ants[i].bore[2]) + theta_0; //check the sign
 
-    min_phi[i] = RF.wrap(bore_phi - ant[i].phi_width,360,180); 
-    max_phi[i] = RF.wrap(bore_phi + ant[i].phi_width,360,180); 
-    min_theta[i] = RF.wrap(bore_theta - ant[i].phi_width,180,0); 
-    max_theta[i] = RF.wrap(bore_theta + ant[i].phi_width,180,0); 
+    if (ants[i].phi_width >=180) 
+    {
+      min_phi[i] =-180; 
+      max_phi[i] = 180 
+    }
+    else
+    {
+      min_phi[i] = RF.wrap(bore_phi - ants[i].phi_width,360,0); 
+      max_phi[i] = RF.wrap(bore_phi + ants[i].phi_width,360,0); 
+    }
+
+    if (ants[i].theta_width >= 90)
+    {
+
+      min_theta[i] =-90; 
+      max_theta[i] = 90;
+ 
+    }
+    else
+    {
+      min_theta[i] = RF.wrap(bore_theta - ants[i].theta_width,180,0); 
+      max_theta[i] = RF.wrap(bore_theta + ants[i].theta_width,180,0); 
+    }
 
     can_use[i][i] = false; 
 
@@ -397,11 +416,12 @@ RF.AngleMapper = function ( ants,  c = 0.3, phi_0 =0, theta_0 = 0 )
       var bore_xy_j = [ants[j].bore[0], ants[j].bore[1], 0] ; 
       var bore_rz_i = [RF.magnitude(ants[i].bore,2),0, ants[i].bore[2]] ; 
       var bore_rz_j = [RF.magnitude(ants[j].bore,2),0, ants[j].bore[2]] ; 
-      var boresight_phi_angle =  angleBetween(bore_xy_i, bore_xy_j) * 180/Math.PI; 
-      var boresight_theta_angle =  angleBetween(bore_rz_i, bore_rz_j) * 180/Math.PI; 
+      var boresight_phi_angle =  RF.angleBetween(bore_xy_i, bore_xy_j) * 180/Math.PI; 
+      var boresight_theta_angle =  RF.angleBetween(bore_rz_i, bore_rz_j) * 180/Math.PI; 
 
       can_use[i][j] = boresight_phi_angle < ants[i].phi_width && boresight_phi_angle < ants[j].phi_width && boresight_theta_angle < ants[i].theta_width && boresight_theta_angle < ants[j].theta_width; 
       can_use[j][i] = can_use[i][j]; 
+//      console.log(i,j,can_use[i][j]); 
     }
   }
    
@@ -412,17 +432,16 @@ RF.AngleMapper = function ( ants,  c = 0.3, phi_0 =0, theta_0 = 0 )
     {
       var phi = Math.PI / 180. * (phi_deg - phi_0); 
       var theta = Math.PI / 180. * (theta_deg - theta_0); 
-      var dir = [ cos(phi) * cos(theta), sin(phi) * cos(theta), sin(theta) ]; 
-      var diff = [ ants[i].pos[0] - ants[j].pos[0], ants[i].pos[1] - ants[j].pos[1], ants[i].pos[2] - ants[j].pos[2] ];
-      var distance = RF.magnitude(diff); 
-      var angle = RF.angleBetween(dir,diff); 
-      return c * cos(angle) * distance; 
+      var dir = [ Math.cos(phi) * Math.cos(theta), Math.sin(phi) * Math.cos(theta), Math.sin(theta) ]; 
+      var diff = [ ants[j].pos[0] - ants[i].pos[0], ants[j].pos[1] - ants[i].pos[1], ants[j].pos[2] - ants[i].pos[2] ];
+      return RF.dotProduct(diff,dir) / c; 
     }, 
+
     function( i, j)  //usePair
     {
       return can_use[i][j]; 
 
-   }, 
+    }, 
 
     function(i,phi_deg,theta_deg)  //canUse
     {
@@ -448,70 +467,126 @@ RF.AngleMapper = function ( ants,  c = 0.3, phi_0 =0, theta_0 = 0 )
 RF.InterferometricMap = function ( nx, xmin, xmax, ny, ymin,ymax, mapper) 
 {
 
-  var map = {}; 
-
   /* make the histogram */ 
-  map.hist = JSROOT.CreateHistogram("TH2F", nx,ny); 
-  map.hist.fXaxis.fXmin = xmin; 
-  map.hist.fXaxis.fXmax = xmax; 
-  map.hist.fXaxis.fYmin = ymin; 
-  map.hist.fXaxis.fYmax = ymax; 
+  this.hist = JSROOT.CreateHistogram("TH2F", nx,ny); 
+  this.hist.fXaxis.fXmin = xmin; 
+  this.hist.fXaxis.fXmax = xmax; 
+  this.hist.fYaxis.fXmin = ymin; 
+  this.hist.fYaxis.fXmax = ymax; 
 
-  map.soln = RF.createArray(nx,ny); 
+  this.soln = RF.createArray(nx,ny); 
 
-  map.usepair = RF.createArray(nx,ny);
+  this.usepair = RF.createArray(nx,ny);
   
-  map.nx = nx; 
-  map.ny = ny; 
-  map.ymin = ymin; 
-  map.ymax = ymax; 
-  map.xmin = xmin; 
-  map.xmax = xmax; 
-  map.dx = (xmax-xmin)/nx; 
-  map.dy = (ymax-ymin)/ny; 
-  map.nant = mapper.nant
+  this.nx = nx; 
+  this.ny = ny; 
+  this.ymin = ymin; 
+  this.ymax = ymax; 
+  this.xmin = xmin; 
+  this.xmax = xmax; 
+  this.dx = (xmax-xmin)/nx; 
+  this.dy = (ymax-ymin)/ny; 
+  this.nant = mapper.nant;
+  this.xcorrs = RF.createArray(this.nant, this.nant);
 
-  for (var iant = 0; iant < mapper.nant; iant++)
+  this.is_init = false; 
+
+  this.init = function() 
   {
-    for (var jant = 0; jant < mapper.nant; jant++)
+    if (this.is_init) return; 
+
+    for (var iant = 0; iant < mapper.nant; iant++)
     {
-      usepair[iant][jant] = mapper.usePair(iant,jant);
-    }
-  }
-
-
-  for (var ix = 0; x < nx; ix++) 
-  {
-    for (var iy = 0; iy < ny; iy++) 
-    {
-      var x = ix*map.dx + xmin; 
-      var y = iy*map.dy + ymin; 
-
-      map.soln[i][j] = []; 
-
-      for (var iant  = 0; iant < mapper.nant; iant++)
+      for (var jant = 0; jant < mapper.nant; jant++)
       {
-        if (!mapper.canUse(iant,x,y)) continue; 
+        this.usepair[iant][jant] = mapper.usePair(iant,jant);
+  //      console.log(iant,jant, this.usepair[iant][jant]); 
+      }
+    }
 
-        for (var jant = iant+1; jant < mapper.nant; jant++) 
+
+    for (var ix = 0; ix <this.nx; ix++) 
+    {
+      for (var iy = 0; iy < this.ny; iy++) 
+      {
+        var x = (ix+0.5)*this.dx + xmin; 
+        var y = (iy+0.5)*this.dy + ymin; 
+
+        this.soln[ix][iy] = []; 
+
+        for (var iant  = 0; iant < mapper.nant; iant++)
         {
-          if (!mapper.canUse(jant,x,y)) continue; 
-          if (usepair[iant][jant]) continue;  
+          if (!mapper.canUse(iant,x,y)) continue; 
 
-          var this_soln = {}; 
-          this_soln.i = iant; 
-          this_soln.j = jant; 
-          this_soln.dt = mapper.deltaTs(iant,jant,x,y);
-          map.soln[i][j].push(this_soln); 
+          for (var jant = iant+1; jant < mapper.nant; jant++) 
+          {
+            if (!mapper.canUse(jant,x,y)) continue; 
+
+            if (!this.usepair[iant][jant]) continue;  
+
+            
+            var this_soln = {}; 
+            this_soln.i = iant; 
+            this_soln.j = jant; 
+            this_soln.dt = mapper.deltaTs(iant,jant,x,y);
+            this.soln[ix][iy].push(this_soln); 
+          }
         }
       }
     }
+    this.is_init = true; 
   }
 
-  map.compute = function(channels) 
+  this.setTitle = function (title, xtitle, ytitle) 
   {
+    this.hist.fTitle = title;
+    this.hist.fXaxis.fTitle = xtitle;
+    this.hist.fYaxis.fTitle = ytitle;
+  }
 
-    var xcorrs = RF.createArray(this.nants, this.nant); 
+
+  this.deltaTHist = function (i,j)
+  {
+    this.init(); 
+   
+    if (i > j) 
+    {
+      var tmp  = i; 
+      i = j; 
+      j = tmp; 
+    }
+
+    var h = JSROOT.CreateHistogram("TH2F", nx,ny); 
+    h.fXaxis.fXmin = xmin; 
+    h.fXaxis.fXmax = xmax; 
+    h.fYaxis.fXmin = ymin; 
+    h.fYaxis.fXmax = ymax; 
+
+    for (var ix = 0; ix < this.nx; ix++)
+    {
+      for (var iy = 0; iy < this.ny; iy++)
+      {
+        var val = 0; 
+        for (var ipair = 0; ipair < this.soln[ix][iy].length; ipair++)
+        {
+          if (this.soln[ix][iy][ipair].i == i && this.soln[ix][iy][ipair].j == j)
+          {
+            val = this.soln[ix][iy][ipair].dt; 
+          }
+        }
+         var ibin = (this.nx+2) * (iy+1) + ix+1;
+         h.setBinContent(ibin, val); 
+      }
+    }
+
+    return h; 
+  }
+
+  this.compute = function(channels) 
+  {
+    this.init(); 
+
+    this.xcorrs = RF.createArray(this.nant, this.nant); 
 
     for (var iant = 0; iant < this.nant; iant++) 
     {
@@ -519,7 +594,7 @@ RF.InterferometricMap = function ( nx, xmin, xmax, ny, ymin,ymax, mapper)
       {
         if (this.usepair[iant][jant]) 
         {
-          xcorrs[iant][jant] = RF.crossCorrelation(channels[iant], channels[jant]); 
+          this.xcorrs[iant][jant] = RF.crossCorrelation(channels[iant], channels[jant]); 
         }
       }
     }
@@ -529,20 +604,21 @@ RF.InterferometricMap = function ( nx, xmin, xmax, ny, ymin,ymax, mapper)
       for (var iy = 0; iy < this.ny; iy++) 
       {
         var sum = 0; 
-        var norm = this.solns[ix][jx].length; 
+        var norm = this.soln[ix][iy].length; 
 
         for (var ipair = 0; ipair < norm; ipair++) 
         {
-          var soln = this.solns[ix][jx][ipair]; 
-          sum += RF.evalEven(xcorrs[soln.i][soln.j], soln.dt); 
+          var soln = this.soln[ix][iy][ipair]; 
+          sum += RF.evalEven(this.xcorrs[soln.i][soln.j], -soln.dt); 
         }
 
-        this.hist.setBinContent(ix,iy, norm? sum/norm : 0); 
+//        console.log(ix,iy, sum,norm);
+        var ibin = (this.nx+2) * (iy+1) + ix+1;
+        this.hist.setBinContent(ibin, norm? sum/norm : 0); 
       }
     }
   }
 
-  return map; 
 }
 
 
