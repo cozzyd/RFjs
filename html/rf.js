@@ -41,6 +41,26 @@ RF.doInvFFT = function(Y, Nt = 0)
 };
 
 
+/** Returns the maximum time and value */ 
+RF.getMaximumTimeAndValue = function(g, unsigned=true) 
+{
+  var max = 0; 
+  var max_t = -1;
+
+  for (var i = 0; i < g.fNpoints; i++) 
+  {
+    var val = g.fY[i]; 
+    if (unsigned && val < 0) val = -val; 
+    
+    if (val > Math.abs(max)) 
+    {
+      max = g.fY[i]; 
+      max_t = g.fX[i]; 
+    }
+  }
+
+  return [max_t, max]; 
+}
 
 /** Generates a power spectrum of the given TGraph, returning another TGraph.
  * If you already have the FFT available, you can pass it as Y
