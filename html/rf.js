@@ -248,7 +248,7 @@ RF.range = function(start, N, step = 1)
  * Asumes they have the same sampling and start position 
  * */ 
 
-RF.crossCorrelation = function ( g1, g2, pad=true, upsample = 4, scale = null) 
+RF.crossCorrelation = function ( g1, g2, pad=true, upsample = 4, scale = null, cutoff = 0) 
 {
   
   if (scale == null) scale = RF.getRMS(g1) * RF.getRMS(g2) ;
@@ -256,16 +256,20 @@ RF.crossCorrelation = function ( g1, g2, pad=true, upsample = 4, scale = null)
 
   /** most likely we need to pad by a factor of 2 */ 
 
+  var u1 = RF.getMean(g1);
+  var u2 = RF.getMean(g2);
   var N = Math.max(g1.fNpoints, g2.fNpoints); 
   var dt = g1.fX[1] - g1.fX[0]; 
   if (pad) N*=2; 
   
+  scale *= N/2 * N; 
+  var df = 1./(N*dt); 
 
   var y1 = new Float32Array(N); 
   var y2 = new Float32Array(N); 
 
-  for (var i = 0; i < g1.fNpoints;i++) y1[i] = g1.fY[i]; 
-  for (var i = 0; i < g2.fNpoints;i++) y2[i] = g2.fY[i]; 
+  for (var i = 0; i < g1.fNpoints;i++) y1[i] = g1.fY[i]-u1; 
+  for (var i = 0; i < g2.fNpoints;i++) y2[i] = g2.fY[i]-u2; 
 
 
   var Y1 = RF.doFFT(y1); 
@@ -275,13 +279,15 @@ RF.crossCorrelation = function ( g1, g2, pad=true, upsample = 4, scale = null)
 
   for (var i = 0; i < N/2+1;i++) 
   {
+    if (cutoff>0 && i*df > cutoff) break; 
+
     var re1 = Y1[2*i];
     var re2 = Y2[2*i];
     var im1 = Y1[2*i+1];
     var im2 = Y2[2*i+1]; 
 
-    Y[2*i] = (re1*re2 + im1*im2)/scale/N/N;
-    Y[2*i+1] = (im1*re2-re1*im2)/scale/N/N; 
+    Y[2*i] = (re1*re2 + im1*im2)/scale;
+    Y[2*i+1] = (im1*re2-re1*im2)/scale;
   }
 
   var y = RF.doInvFFT(Y); 
@@ -509,6 +515,8 @@ RF.InterferometricMap = function ( nx, xmin, xmax, ny, ymin,ymax, mapper)
   this.nant = mapper.nant;
   this.xcorrs = RF.createArray(this.nant, this.nant);
 
+  this.cutoff = 0; 
+  this.upsample = 4; 
   this.is_init = false; 
 
   this.init = function() 
@@ -520,7 +528,6 @@ RF.InterferometricMap = function ( nx, xmin, xmax, ny, ymin,ymax, mapper)
       for (var jant = 0; jant < mapper.nant; jant++)
       {
         this.usepair[iant][jant] = mapper.usePair(iant,jant);
-  //      console.log(iant,jant, this.usepair[iant][jant]); 
       }
     }
 
@@ -602,7 +609,7 @@ RF.InterferometricMap = function ( nx, xmin, xmax, ny, ymin,ymax, mapper)
     return h; 
   }
 
-  this.compute = function(channels) 
+  this.compute = function(channels, reverse_sign = true) 
   {
     this.init(); 
 
@@ -610,11 +617,13 @@ RF.InterferometricMap = function ( nx, xmin, xmax, ny, ymin,ymax, mapper)
 
     for (var iant = 0; iant < this.nant; iant++) 
     {
+      if (channels[iant] == null) continue;
       for (var jant = iant+1; jant < this.nant; jant++) 
       {
+        if (channels[jant] == null) continue;
         if (this.usepair[iant][jant]) 
         {
-          this.xcorrs[iant][jant] = RF.crossCorrelation(channels[iant], channels[jant]); 
+          this.xcorrs[iant][jant] = RF.crossCorrelation(channels[iant], channels[jant],true,this.upsample,null,this.cutoff); 
         }
       }
     }
@@ -624,12 +633,18 @@ RF.InterferometricMap = function ( nx, xmin, xmax, ny, ymin,ymax, mapper)
       for (var iy = 0; iy < this.ny; iy++) 
       {
         var sum = 0; 
-        var norm = this.soln[ix][iy].length; 
+        var N = this.soln[ix][iy].length; 
 
-        for (var ipair = 0; ipair < norm; ipair++) 
+        var norm = N; 
+        for (var ipair = 0; ipair < N; ipair++) 
         {
           var soln = this.soln[ix][iy][ipair]; 
-          sum += RF.evalEven(this.xcorrs[soln.i][soln.j], -soln.dt); 
+          if (channels[soln.i] == null || channels[soln.j] == null) 
+          {
+            norm--; 
+            continue; 
+          }
+          sum += RF.evalEven(this.xcorrs[soln.i][soln.j], reverse_sign ? -soln.dt: soln.dt); 
         }
 
 //        console.log(ix,iy, sum,norm);
