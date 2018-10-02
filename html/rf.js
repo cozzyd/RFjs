@@ -588,6 +588,10 @@ RF.InterferometricMap = function ( nx, xmin, xmax, ny, ymin,ymax, mapper)
     h.fXaxis.fXmax = xmax; 
     h.fYaxis.fXmin = ymin; 
     h.fYaxis.fXmax = ymax; 
+    h.fXaxis.fTitle = "azimuth (degrees)"; 
+    h.fYaxis.fTitle = "elevation (degrees)"; 
+    h.fYaxis.fTitle = "elevation (degrees)"; 
+    h.fTitle = "#Delta T (" + i + "," + j+")"; 
 
     for (var ix = 0; ix < this.nx; ix++)
     {
