@@ -199,11 +199,19 @@ RF.hilbertEnvelope = function(g, Y = null, gh = null, H = null)
 }
 
 
-RF.getMean = function(g) 
+
+RF.getGraphMean = function(g) 
 {
   var sum = 0; 
   for (var i = 0; i < g.fNpoints; i++) sum += g.fY[i]; 
   return sum / g.fNpoints; 
+}
+
+RF.getMean = function(y) 
+{
+  var sum = 0; 
+  for (var i = 0; i < y.length; i++) sum += y[i]; 
+  return sum / y.length; 
 }
 
 RF.getRMS = function(g) 
@@ -225,12 +233,22 @@ RF.getRMS = function(g)
 
 
 
-RF.rectify = function(g) 
+RF.rectifyGraph = function(g) 
 {
-  var mean = RF.getMean(g); 
+  var mean = RF.getGraphMean(g); 
   for (var i = 0; i < g.fNpoints; i++) g.fY[i] -= mean; 
 
 }
+
+RF.rectify= function(y) 
+{
+  var mean = RF.getMean(y); 
+  for (var i = 0; i < y.length; i++) y[i]-=mean; 
+
+}
+
+
+
 
 
 RF.range = function(start, N, step = 1) 
@@ -257,8 +275,8 @@ RF.crossCorrelation = function ( g1, g2, pad=true, upsample = 4, scale = null, c
 
   /** most likely we need to pad by a factor of 2 */ 
 
-  var u1 = RF.getMean(g1);
-  var u2 = RF.getMean(g2);
+  var u1 = RF.getGraphMean(g1);
+  var u2 = RF.getGraphMean(g2);
   var N = Math.max(g1.fNpoints, g2.fNpoints); 
   var dt = g1.fX[1] - g1.fX[0]; 
   if (pad) N*=2; 
@@ -556,12 +574,10 @@ RF.Spectrogram = function(title, ntime, tmin, tmax, nfreq, fmin, fmax)
 
 
 
-  //this assumes g is the right length... 
-  this.addGraph = function(g,t) 
+  this.addY = function(y,t) 
   {
-    var y = g.fY; ; 
     var Y = RF.doFFT(y); 
-    var N = g.fY.length; 
+    var N = y.length; 
     var P = new Float32Array(N/2+1); 
 
     for (var i = 0; i <N/2+1; i++)
