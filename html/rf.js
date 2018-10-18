@@ -209,7 +209,7 @@ RF.getGraphMean = function(g)
 
 RF.getMean = function(y) 
 {
-  var sum = 0; 
+  var sum = 0.; 
   for (var i = 0; i < y.length; i++) sum += y[i]; 
   return sum / y.length; 
 }
