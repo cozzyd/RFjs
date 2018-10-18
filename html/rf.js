@@ -2,6 +2,7 @@
 
 /** 
  *  Various things for working with RF TGraphs
+ *   Sorry, I dont' really know javascript, so this is probably all terrible. 
  *
  */ 
 
@@ -482,6 +483,128 @@ RF.AngleMapper = function ( ants,  c = 0.3, phi_0 =0, theta_0 = 0 )
 }
 
 
+/** Computes a coherent sum of graphs with the given time delays */
+
+RF.coherentSum = function( graphs, times ) 
+{
+
+  //set up the grid, use min / max and dt of first graph 
+  if (!(graphs.length >0) || graphs.length!=times.length) return null; 
+  var min = graphs[0].fX[0] - times[0]; 
+  var max = graphs[0].fX[graphs[0].fNpoints-1] - times[0]; 
+  var dt = (max-min)/(graphs[0].fNpoints -1); 
+
+  for (var i = 1; i < N; i++) 
+  {
+    if (graphs[i].fX[0] -times[i]< min) min = graphs[i].fX[0]-times[i]; 
+    if (graphs[i].fX[graphs[i].fNpoints-1] > max) max = graphs[i].fX[graphs[i].fNpoints-1] - times[i]; 
+  }
+
+  var N = (max-min)/dt+1; 
+
+  var x = RF.range(min,N,dt); 
+  var y= new Float32Array(N); 
+
+  for (var i = 0; i < N; i++) 
+  {
+    for (var j = 0; j < graphs.length; j++)
+    {
+      y[i] += evalEven(graphs[j], x[i]-times[j]); 
+    }
+  }
+
+  var ans = ROOT.CreateTGraph(N,x,y); 
+  ans.fTitle = "Coherent Sum";
+  ans.fXaxis.fTitle = "time"; 
+  return ans; 
+
+}
+
+
+RF.Spectrogram = function(title, ntime, tmin, tmax, nfreq, fmin, fmax) 
+{
+  this.hist = JSROOT.CreateHistogram("TH2D", ntime, nfreq); 
+  this.sum = JSROOT.CreateHistogram("TH2D", ntime, nfreq); 
+  this.norm = JSROOT.CreateHistogram("TH1F", ntime); 
+  this.tmin = tmin; 
+  this.dt = (this.tmax-this.tmin)/(this.ntime-1); 
+  this.nt = ntime; 
+  this.nf = nfreq;
+  this.df = (fmax-fmin)/(nfreq);
+  this.fmin  = fmin; 
+
+  this.norm.fXaxis.fXmin = tmin; 
+  this.norm.fXaxis.fXmax = tmax; 
+  this.norm.fXaxis.fTimeDisplay = 1; 
+
+  this.hist.fTitle = title; 
+  this.hist.fXaxis.fXmin = tmin; 
+  this.hist.fXaxis.fXmax = tmax; 
+  this.hist.fXaxis.fTimeDisplay = 1; 
+  this.hist.fYaxis.fXmin = fmin; 
+  this.hist.fYaxis.fXmax = fmax; 
+
+  this.sum.fTitle = title; 
+  this.sum.fXaxis.fXmin = tmin; 
+  this.sum.fXaxis.fXmax = tmax; 
+  this.sum.fXaxis.fTimeDisplay = 1; 
+  this.sum.fYaxis.fXmin = fmin; 
+  this.sum.fYaxis.fXmax = fmax; 
+
+
+
+
+
+
+  //this assumes g is the right length... 
+  this.addGraph = function(g,t) 
+  {
+    var y = g.fY; ; 
+    var Y = RF.doFFT(y); 
+    var N = g.fY.length; 
+    var P = new Float32Array(N/2+1); 
+
+    for (var i = 0; i <N/2+1; i++)
+    {
+      P[i] = (Y[2*i]*Y[2*i] + Y[2*i+1]*Y[2*i+1]) / N; 
+      if (i > 0 || i < N/2) P[i] *=2; 
+    }
+
+
+    for (var i = 0; i < this.nf; i++) 
+    {
+      var f = this.fmin + (i+0.5) * this.df; 
+      this.sum.Fill(t,f, P[i]); 
+    }
+    this.norm.Fill(t); 
+  }
+
+
+  this.finalize = function() 
+  {
+
+    for (var i = 0; i < this.nt; i++) 
+    {
+      for (var j = 0; j < this.nf; j++) 
+      {
+        var ibin = (this.nt+2) * (j+1) + i+1;
+//        console.log(i,j,ibin, this.hist.getBinContent(ibin), this.norm.getBinContent(i+1)); 
+//        this.hist.setBinContent(ibin, 10 * Math.log10(this.hist.getBinContent(ibin)/ this.norm.getBinContent(i+1))); 
+        var n = this.norm.fArray[i+1]; 
+        var s = this.sum.fArray[ibin]; 
+        var r = s/n; 
+        var dbish = n  == 0 ? -20 : 10*Math.log10(r); 
+        if (dbish < -20) dbish = -20; 
+        this.hist.setBinContent(ibin,  dbish); 
+      }
+    }
+    this.hist.fXaxis.fTitle = "time"; 
+    this.hist.fYaxis.fTitle = "freq"; 
+    this.hist.fZaxis.fTitle = "dBish"; 
+  }
+
+}
+
 
 
 /** This sets up an interferometric map (which will be a TH2) 
@@ -618,6 +741,7 @@ RF.InterferometricMap = function ( nx, xmin, xmax, ny, ymin,ymax, mapper)
     this.init(); 
 
     this.xcorrs = RF.createArray(this.nant, this.nant); 
+    this.channels = channels; 
 
     for (var iant = 0; iant < this.nant; iant++) 
     {
