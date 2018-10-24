@@ -614,8 +614,8 @@ RF.Spectrogram = function(title, ntime, tmin, tmax, nfreq, fmin, fmax)
         this.hist.setBinContent(ibin,  dbish); 
       }
     }
-    this.hist.fXaxis.fTitle = "time"; 
-    this.hist.fYaxis.fTitle = "freq"; 
+    this.hist.fXaxis.fTitle = "readout time"; 
+    this.hist.fYaxis.fTitle = "freq (GHz)"; 
     this.hist.fZaxis.fTitle = "dBish"; 
   }
 
