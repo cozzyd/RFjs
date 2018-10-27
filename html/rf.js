@@ -527,13 +527,13 @@ RF.coherentSum = function( graphs, times )
   {
     for (var j = 0; j < graphs.length; j++)
     {
-      y[i] += evalEven(graphs[j], x[i]-times[j]); 
+      var val =  RF.evalEven(graphs[j], x[i]-times[j]); 
+      if (!isNaN(val)) y[i] +=val; 
     }
   }
 
-  var ans = ROOT.CreateTGraph(N,x,y); 
+  var ans = JSROOT.CreateTGraph(N,x,y); 
   ans.fTitle = "Coherent Sum";
-  ans.fXaxis.fTitle = "time"; 
   return ans; 
 
 }
@@ -653,6 +653,7 @@ RF.InterferometricMap = function ( nx, xmin, xmax, ny, ymin,ymax, mapper)
   this.dy = (ymax-ymin)/ny; 
   this.nant = mapper.nant;
   this.xcorrs = RF.createArray(this.nant, this.nant);
+  this.navg = 0; 
 
   this.cutoff = 0; 
   this.upsample = 4; 
@@ -752,7 +753,7 @@ RF.InterferometricMap = function ( nx, xmin, xmax, ny, ymin,ymax, mapper)
     return h; 
   }
 
-  this.compute = function(channels, reverse_sign = true) 
+  this.compute = function(channels, avg = false, reverse_sign = true) 
   {
     this.init(); 
 
@@ -793,9 +794,17 @@ RF.InterferometricMap = function ( nx, xmin, xmax, ny, ymin,ymax, mapper)
 
 //        console.log(ix,iy, sum,norm);
         var ibin = (this.nx+2) * (iy+1) + ix+1;
-        this.hist.setBinContent(ibin, norm? sum/norm : 0); 
+
+        var add_to = avg ? this.hist.getBinContent(ix+1,iy+1) * this.navg : 0;
+
+        var nsum = avg ? (this.navg+1) : 1; 
+        var val = norm ? sum/norm : 0; 
+        this.hist.setBinContent(ibin, (add_to + val)/nsum) ;
       }
     }
+
+    if (avg) this.navg++; 
+    else this.navg = 0; 
   }
 
 }
