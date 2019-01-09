@@ -321,7 +321,8 @@ RF.crossCorrelation = function ( g1, g2, pad=true, upsample = 4, scale = null, c
   var x = RF.range(-N/2*dt, N, dt); 
   var g = JSROOT.CreateTGraph(y.length, x, yrotated); 
 
-  g.fYitle = "Correlation of" + g1.fTitle + " with " + g2.fTitle; 
+  g.InvertBit(JSROOT.BIT(18)); //make it uneditable
+
 
   return g; 
 }
@@ -503,11 +504,33 @@ RF.AngleMapper = function ( ants,  c = 0.3, phi_0 =0, theta_0 = 0 )
 
 /** Computes a coherent sum of graphs with the given time delays */
 
-RF.coherentSum = function( graphs, times ) 
+RF.coherentSum = function( raw_graphs, times,upsample = 3 ) 
 {
 
+  if (!(raw_graphs.length >0) || raw_graphs.length!=times.length) return null; 
+
+
+  var graphs = []; 
+
+  // if upsampling, make an upsampled copy 
+  //
+  if (upsample > 0) 
+  {
+    for (var i = 0; i < raw_graphs.length; i++) 
+    {
+      var gg = JSROOT.CreateTGraph(raw_graphs[i].fNpoints, raw_graphs[i].fX.slice(0), raw_graphs[i].fY.slice(0)); 
+      RF.upsample(gg, upsample+1); 
+      graphs.push(gg); 
+    }
+  }
+  else
+  {
+    for (var i = 0; i < raw_graphs.length; i++) graphs.push(raw_graphs[i]); 
+  }
+
+
   //set up the grid, use min / max and dt of first graph 
-  if (!(graphs.length >0) || graphs.length!=times.length) return null; 
+
   var min = graphs[0].fX[0] - times[0]; 
   var max = graphs[0].fX[graphs[0].fNpoints-1] - times[0]; 
   var dt = (max-min)/(graphs[0].fNpoints -1); 
@@ -753,6 +776,66 @@ RF.InterferometricMap = function ( nx, xmin, xmax, ny, ymin,ymax, mapper)
     return h; 
   }
 
+  this.drawXCorrs = function(where, style_fn = null) 
+  {
+    var disp = new JSROOT.GridDisplay(where, "grid" + this.nant + "x" + this.nant); 
+
+    for (var i = 0; i < this.nant; i ++) 
+    {
+      for (var j = i; j < this.nant; j++) 
+      {
+        var xcorr_frame = where+"_"+(i + this.nant * j).toString(); 
+
+        var g = i == j ?  RF.crossCorrelation(this.channels[i], this.channels[i]) : this.xcorrs[i][j]; 
+        if (style_fn!=null) style_fn(g); 
+        g.fTitle = i + " WITH  " + j; 
+        var histo = JSROOT.CreateHistogram("TH1I",100); 
+        histo.fName = g.fName + "_h";
+        histo.fTitle = g.fTitle;
+        histo.fXaxis.fXmin = g.fX[0]; 
+        histo.fXaxis.fXmax = g.fX[g.fNpoints-1]; 
+        histo.fYaxis.fXmin = -1.1;
+        histo.fYaxis.fXmax = 1.1;
+        histo.fMinimum = -1.1;
+        histo.fMaximum = 1.1;
+        histo.fXaxis.fTitle = "ns"; 
+        histo.fYaxis.fTitle = "correlation"; 
+          
+        g.fHistogram = histo; 
+
+
+
+        JSROOT.draw(xcorr_frame,g, "al", function (painter) 
+            {
+               var hist = painter.GetObject().fHistogram; 
+               painter.root_pad().fGridx = 1; 
+               painter.root_pad().fGridy = 1; 
+               JSROOT.redraw(painter.divid, hist, ""); 
+            }
+            
+            ); 
+
+        if (i!=j) 
+        {
+          //find the maximum or minimum 
+          var val = RF.getMaximumTimeAndValue(this.xcorrs[i][j])[1]; 
+
+          var color_frame = document.getElementById(where+"_"+(j + this.nant*i).toString()); 
+          color_frame.innerHTML = "<p> "+j+" WITH "+ i + " </p><h2 style='margin-top:40%;width:100%;text-align:center;'>"+val.toFixed(5)+"</h2>"; 
+          var deg = (255-Math.floor(Math.abs(val)*255)).toString(16); 
+          if (deg.length<2 ) deg = "0"+deg; 
+          var string = val > 0 ? "#" + "ff" + deg+deg : " #" + deg +deg+"ff"; 
+//          console.log(string); 
+          color_frame.style.backgroundColor = string; 
+
+
+        }
+
+      }
+    }
+
+  }
+
   this.compute = function(channels, avg = false, reverse_sign = true) 
   {
     this.init(); 
@@ -768,7 +851,9 @@ RF.InterferometricMap = function ( nx, xmin, xmax, ny, ymin,ymax, mapper)
         if (channels[jant] == null) continue;
         if (this.usepair[iant][jant]) 
         {
-          this.xcorrs[iant][jant] = RF.crossCorrelation(channels[iant], channels[jant],true,this.upsample,null,this.cutoff); 
+          var G = RF.crossCorrelation(channels[iant], channels[jant],true,this.upsample,null,this.cutoff); 
+          this.xcorrs[iant][jant] = G; 
+          G.InvertBit(JSROOT.BIT(18)); //make it uneditable
         }
       }
     }
