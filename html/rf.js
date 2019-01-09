@@ -557,6 +557,7 @@ RF.coherentSum = function( raw_graphs, times,upsample = 3 )
 
   var ans = JSROOT.CreateTGraph(N,x,y); 
   ans.fTitle = "Coherent Sum";
+  ans.InvertBit(JSROOT.BIT(18)); 
   return ans; 
 
 }
@@ -932,3 +933,8 @@ RF.IIRFilter = function(g, b,a)
   }
 }
 
+
+RF.shiftTimes = function(g, t) 
+{
+  for (var i = 0; i < g.fNpoints; i++) { g.fX[i] +=t; }
+}
