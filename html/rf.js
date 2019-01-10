@@ -43,13 +43,14 @@ RF.doInvFFT = function(Y, Nt = 0)
 
 
 /** Returns the maximum time and value */ 
-RF.getMaximumTimeAndValue = function(g, unsigned=true) 
+RF.getMaximumTimeAndValue = function(g, unsigned=true, max_dt = 0) 
 {
   var max = 0; 
   var max_t = -1;
 
   for (var i = 0; i < g.fNpoints; i++) 
   {
+    if (max_dt > 0 && Math.abs(g.fX[i]) > max_dt) continue; 
     var val = g.fY[i]; 
     if (unsigned && val < 0) val = -val; 
     
@@ -777,8 +778,9 @@ RF.InterferometricMap = function ( nx, xmin, xmax, ny, ymin,ymax, mapper)
     return h; 
   }
 
-  this.drawXCorrs = function(where, style_fn = null) 
+  this.drawXCorrs = function(where, style_fn = null, max_delay=0) 
   {
+    this.init(); 
     var disp = new JSROOT.GridDisplay(where, "grid" + this.nant + "x" + this.nant); 
 
     for (var i = 0; i < this.nant; i ++) 
@@ -811,6 +813,7 @@ RF.InterferometricMap = function ( nx, xmin, xmax, ny, ymin,ymax, mapper)
                var hist = painter.GetObject().fHistogram; 
                painter.root_pad().fGridx = 1; 
                painter.root_pad().fGridy = 1; 
+               painter.frame_painter().Zoom("x",-100,100); 
                JSROOT.redraw(painter.divid, hist, ""); 
             }
             
@@ -819,13 +822,13 @@ RF.InterferometricMap = function ( nx, xmin, xmax, ny, ymin,ymax, mapper)
         if (i!=j) 
         {
           //find the maximum or minimum 
-          var val = RF.getMaximumTimeAndValue(this.xcorrs[i][j])[1]; 
+          var vals = RF.getMaximumTimeAndValue(this.xcorrs[i][j], true, max_delay); 
 
           var color_frame = document.getElementById(where+"_"+(j + this.nant*i).toString()); 
-          color_frame.innerHTML = "<p> "+j+" WITH "+ i + " </p><h2 style='margin-top:40%;width:100%;text-align:center;'>"+val.toFixed(5)+"</h2>"; 
-          var deg = (255-Math.floor(Math.abs(val)*255)).toString(16); 
+          color_frame.innerHTML = "<p> "+j+" WITH "+ i + " </p><h2 style='margin-top:40%;width:100%;text-align:center;'> corr<sub>max</sub>="+vals[1].toFixed(4)+"<br>t= " + vals[0].toFixed(2)+ "</h2>"; 
+          var deg = (255-Math.floor(Math.abs(vals[1])*255)).toString(16); 
           if (deg.length<2 ) deg = "0"+deg; 
-          var string = val > 0 ? "#" + "ff" + deg+deg : " #" + deg +deg+"ff"; 
+          var string = vals[1] > 0 ? "#" + "ff" + deg+deg : " #" + deg +deg+"ff"; 
 //          console.log(string); 
           color_frame.style.backgroundColor = string; 
 
@@ -854,7 +857,6 @@ RF.InterferometricMap = function ( nx, xmin, xmax, ny, ymin,ymax, mapper)
         {
           var G = RF.crossCorrelation(channels[iant], channels[jant],true,this.upsample,null,this.cutoff); 
           this.xcorrs[iant][jant] = G; 
-          G.InvertBit(JSROOT.BIT(18)); //make it uneditable
         }
       }
     }
