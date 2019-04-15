@@ -265,7 +265,7 @@ RF.range = function(start, N, step = 1)
 
 
 /* Calculates the cross-correlation of two graphs, returning the cross-correlation the time domain 
- * Asumes they have the same sampling and start position 
+ * Asumes they have the same sampling
  * */ 
 
 RF.crossCorrelation = function ( g1, g2, pad=true, upsample = 4, scale = null, min_freq = 0, max_freq = 0) 
@@ -320,7 +320,7 @@ RF.crossCorrelation = function ( g1, g2, pad=true, upsample = 4, scale = null, m
 
   N = y.length; 
   dt = dt/upsample; 
-  var x = RF.range(-N/2*dt, N, dt); 
+  var x = RF.range(-N/2*dt+g1.fX[0]-g2.fX[0], N, dt); 
   var g = JSROOT.CreateTGraph(y.length, x, yrotated); 
 
   g.InvertBit(JSROOT.BIT(18)); //make it uneditable
@@ -724,13 +724,6 @@ RF.InterferometricMap = function ( nx, xmin, xmax, ny, ymin,ymax, mapper)
   this.upsample = 4; 
   this.is_init = false; 
 
-  this.baseline_time_offsets = RF.createArray(this.nant,this.nant); 
-
-  this.setBaselineTimeOffset = function(i,j,dt)
-  {
-    this.baseline_time_offsets[i][j] = dt; 
-    this.baseline_time_offsets[j][i] = -dt; 
-  }
 
   this.setTimeRange = function(tmin, tmax) 
   {
@@ -758,17 +751,6 @@ RF.InterferometricMap = function ( nx, xmin, xmax, ny, ymin,ymax, mapper)
   }
 
 
-  this.resetBaselineTimeOffsets = function() 
-  {
-    for (var iant = 0; iant < this.nant; iant++)
-    {
-      for (var jant = 0; jant < this.nant; jant++)
-      {
-         this.baseline_time_offsets[iant][jant] = 0; 
-      }
-    }
-  }
-
   this.init = function() 
   {
     if (this.is_init) return; 
@@ -778,7 +760,6 @@ RF.InterferometricMap = function ( nx, xmin, xmax, ny, ymin,ymax, mapper)
       for (var jant = 0; jant < mapper.nant; jant++)
       {
         this.usepair[iant][jant] = mapper.usePair(iant,jant);
-        this.baseline_time_offsets[iant][jant] = 0; 
       }
     }
 
@@ -975,7 +956,7 @@ RF.InterferometricMap = function ( nx, xmin, xmax, ny, ymin,ymax, mapper)
             norm--; 
             continue; 
           }
-          var this_dt = soln.dt - this.baseline_time_offsets[soln.i][soln.j];
+          var this_dt = soln.dt;
           sum += RF.evalEven(this.xcorrs[soln.i][soln.j], reverse_sign ? -this_dt: this_dt); 
         }
 
