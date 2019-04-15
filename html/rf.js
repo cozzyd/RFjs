@@ -268,7 +268,7 @@ RF.range = function(start, N, step = 1)
  * Asumes they have the same sampling and start position 
  * */ 
 
-RF.crossCorrelation = function ( g1, g2, pad=true, upsample = 4, scale = null, cutoff = 0) 
+RF.crossCorrelation = function ( g1, g2, pad=true, upsample = 4, scale = null, min_freq = 0, max_freq = 0) 
 {
   
   if (scale == null) scale = RF.getRMS(g1) * RF.getRMS(g2) ;
@@ -299,7 +299,8 @@ RF.crossCorrelation = function ( g1, g2, pad=true, upsample = 4, scale = null, c
 
   for (var i = 0; i < N/2+1;i++) 
   {
-    if (cutoff>0 && i*df > cutoff) break; 
+    if (min_freq>0 && i*df < min_freq) continue; 
+    if (max_freq>0 && i*df > max_freq) break; 
 
     var re1 = Y1[2*i];
     var re2 = Y2[2*i];
@@ -503,6 +504,38 @@ RF.AngleMapper = function ( ants,  c = 0.3, phi_0 =0, theta_0 = 0 )
 }
 
 
+/** Make a cropped copy of g */
+RF.cropWave = function(g, tmin, tmax) 
+{
+
+  // find tmin, and tmax
+
+  var imin = 0; 
+  var imax = g.fNPoints; 
+
+  for (var i = 0; i < g.fNpoints; i++) 
+  {
+    if (g.fX[i] < tmin) 
+    {
+      imin = i+1; 
+    }
+    if (g.fX[i] > tmax)
+    {
+      imax =  i-1; 
+      break; 
+    }
+  }
+
+  if (imin >= g.fNPoints) return null; 
+  if (imax < 0) return null;
+
+//  console.log(tmin,tmax,imin,imax);
+  var cropped= JSROOT.CreateTGraph(imax-imin+1, g.fX.slice(imin,imax+1), g.fY.slice(imin,imax+1)); 
+
+  return cropped; 
+}
+
+
 /** Computes a coherent sum of graphs with the given time delays */
 
 RF.coherentSum = function( raw_graphs, times,upsample = 3 ) 
@@ -680,9 +713,61 @@ RF.InterferometricMap = function ( nx, xmin, xmax, ny, ymin,ymax, mapper)
   this.xcorrs = RF.createArray(this.nant, this.nant);
   this.navg = 0; 
 
-  this.cutoff = 0; 
+  this.restrict_time_range = false; 
+  this.tmin = 0;
+  this.tmax = 0;
+
+  this.fmin = 0;
+  this.fmax = 0;
+
+
   this.upsample = 4; 
   this.is_init = false; 
+
+  this.baseline_time_offsets = RF.createArray(this.nant,this.nant); 
+
+  this.setBaselineTimeOffset = function(i,j,dt)
+  {
+    this.baseline_time_offsets[i][j] = dt; 
+    this.baseline_time_offsets[j][i] = -dt; 
+  }
+
+  this.setTimeRange = function(tmin, tmax) 
+  {
+    this.restrict_time_range = true; 
+    this.tmin = tmin; 
+    this.tmax = tmax; 
+  }
+
+  this.unsetTimeRange = function() 
+  {
+    this.restrict_time_range = false; 
+  }
+
+  this.setFreqRange = function(fmin, fmax) 
+  {
+    this.fmin = fmin; 
+    this.fmax = fmax; 
+  }
+
+  this.unsetFreqRange = function() 
+  {
+    this.fmin=0;
+    this.fmax=0;
+
+  }
+
+
+  this.resetBaselineTimeOffsets = function() 
+  {
+    for (var iant = 0; iant < this.nant; iant++)
+    {
+      for (var jant = 0; jant < this.nant; jant++)
+      {
+         this.baseline_time_offsets[iant][jant] = 0; 
+      }
+    }
+  }
 
   this.init = function() 
   {
@@ -693,6 +778,7 @@ RF.InterferometricMap = function ( nx, xmin, xmax, ny, ymin,ymax, mapper)
       for (var jant = 0; jant < mapper.nant; jant++)
       {
         this.usepair[iant][jant] = mapper.usePair(iant,jant);
+        this.baseline_time_offsets[iant][jant] = 0; 
       }
     }
 
@@ -845,6 +931,18 @@ RF.InterferometricMap = function ( nx, xmin, xmax, ny, ymin,ymax, mapper)
     this.init(); 
 
     this.xcorrs = RF.createArray(this.nant, this.nant); 
+
+    var cropped_channels = []; 
+
+    if (this.restrict_time_range) 
+    {
+      for (var i = 0; i < channels.length; i++) 
+      {
+        cropped_channels.push(RF.cropWave(channels[i], this.tmin, this.tmax)); 
+      }
+      channels = cropped_channels;
+    }
+
     this.channels = channels; 
 
     for (var iant = 0; iant < this.nant; iant++) 
@@ -855,7 +953,7 @@ RF.InterferometricMap = function ( nx, xmin, xmax, ny, ymin,ymax, mapper)
         if (channels[jant] == null) continue;
         if (this.usepair[iant][jant]) 
         {
-          var G = RF.crossCorrelation(channels[iant], channels[jant],true,this.upsample,null,this.cutoff); 
+          var G = RF.crossCorrelation(channels[iant], channels[jant],true,this.upsample,null,this.fmin,this.fmax); 
           this.xcorrs[iant][jant] = G; 
         }
       }
@@ -877,7 +975,8 @@ RF.InterferometricMap = function ( nx, xmin, xmax, ny, ymin,ymax, mapper)
             norm--; 
             continue; 
           }
-          sum += RF.evalEven(this.xcorrs[soln.i][soln.j], reverse_sign ? -soln.dt: soln.dt); 
+          var this_dt = soln.dt - this.baseline_time_offsets[soln.i][soln.j];
+          sum += RF.evalEven(this.xcorrs[soln.i][soln.j], reverse_sign ? -this_dt: this_dt); 
         }
 
 //        console.log(ix,iy, sum,norm);
