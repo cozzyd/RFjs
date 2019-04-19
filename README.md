@@ -1,6 +1,8 @@
 # RFjs
 
-some jsroot-based signal-processing things
+Cosmin Deaconu <cozzyd@kicp.uchicago.edu> 
+
+some jsroot-based signal-processing functions. Originally this was part of monutau (https://github.com/beaconTau/monutau) but I have moved it out so it may be more easily used by multiple projects.
 
 Requires jsroot (https://github.com/root-project/jsroot) and incorporate an emscriptened KissFFT from KissFFT-js (https://github.com/j-funk/kissfft-js)
 
