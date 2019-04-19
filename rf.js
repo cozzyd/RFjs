@@ -1,10 +1,32 @@
 "use strict"; 
 
 /** 
- *  Various things for working with RF TGraphs
- *   Sorry, I dont' really know javascript, so this is probably all terrible. 
+ *
+ * rf.js 
+ *
+ * Signal processing routines using an emscriptened KissFFT and ROOTjs TGraph's
+ * Sorry, I don't really know javascript, so this is probably all terrible. 
+ *
+ *
+ * Because this relies on KissFFT and jsroot, you'll need to include FFT.js and KissFFT.js ahead of this, e.g:
+ *
+ *
+    <script type="text/javascript" src="jsroot/scripts/JSRootCore.js?2d&hierarchy&io&tree"> </script>
+    <script type="text/javascript" src="KissFFT.js"></script>
+    <script type="text/javascript" src="FFT.js"></script>
+    <script type="text/javascript" src="rf.js"></script>
+    <script type="text/javascript" src="myawesomestuff.js"></script>
+
+ 
+ * Cosmin Deaconu <cozzyd@kicp.uchicago.edu>
  *
  */ 
+
+
+
+
+
+
 
 var RF = {}; 
 RF.ffts = {}; 
