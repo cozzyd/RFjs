@@ -508,6 +508,7 @@ RF.AngleMapper = function ( ants,  c = 0.3, phi_0 =0, theta_0 = 0 )
 RF.cropWave = function(g, tmin, tmax) 
 {
 
+  if (g == null) return null; 
   // find tmin, and tmax
 
   var imin = 0; 
@@ -1018,5 +1019,6 @@ RF.IIRFilter = function(g, b,a)
 
 RF.shiftTimes = function(g, t) 
 {
+  if (g==null) return; 
   for (var i = 0; i < g.fNpoints; i++) { g.fX[i] +=t; }
 }
