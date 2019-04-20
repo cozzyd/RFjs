@@ -246,8 +246,11 @@ for (var i = 0; i < Nant; i++)
   g.fLineColor=1+i; 
   g.fName='g'+i; 
   g.fTitle='graphs;ns;V'; 
-  JSROOT.draw('c3',g,"al"); 
 }
+
+ var mg = JSROOT.CreateTMultiGraph.apply(0,gs);
+ mg.fTitle = "The graphs;ns;V"; 
+ JSROOT.draw('c3', mg,'al'); 
 
 //great, now we have our examples!  First let's draw a cross-correlation graph
 
