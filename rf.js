@@ -528,7 +528,7 @@ RF.ElevationMapper = function(zs, c =0.3)
       var theta = Math.PI / 180. * theta_deg; 
       var dt= (zs[i]-zs[j])*Math.sin(theta)/c; 
 //      console.log(theta_deg,i,j, dt); 
-      return dt; 
+      return -dt; 
     } 
   ); 
 }
