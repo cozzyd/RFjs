@@ -427,6 +427,39 @@ RF.angleBetween = function(x,y)
 }
 
 
+/** Generate N random gaussians */
+RF.randomGaussian = function(N, mean = 0,sigma = 1)
+{
+  var out = new Float32Array(N); 
+
+  //use marsaglia method
+  for (var i = 0; i < N/2; i++) 
+  {
+    var U = 2*Math.random()-1;
+    var V = 2*Math.random()-1;
+    var S = U*U+V*V; 
+    if ( S > 1)
+    { 
+      i--; 
+      continue; 
+    }
+
+    var term = Math.sqrt(-2*Math.log(S) / S); 
+    out[2*i]= mean + sigma *U * term;
+
+    if (2*i+1 < N) 
+    {
+      out[2*i+1]= mean + sigma * V * term; 
+    }
+
+
+
+  }
+
+  return out; 
+
+}
+
 /* From  https://stackoverflow.com/questions/966225/how-can-i-create-a-two-dimensional-array-in-javascript */ 
 RF.createArray = function(length) {
     var arr = new Array(length || 0),
