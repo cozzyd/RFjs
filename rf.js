@@ -170,22 +170,22 @@ RF.upsample = function (g, factor=2, Y = null)
 }
 
 
-/** Returns the hilbert transform of g */ 
+/** Returns the hilbert transform of a TGraph */ 
 RF.hilbertTransform = function(g, Y = null) 
 {
 
   if (Y == null) Y = RF.doFFT(g.fY); 
   var Yp = new Float32Array(Y.length); 
 
-  var N = g.fNpoints; 
-  for (var i = 1; i < g.fNpoints/2; i++) 
+  var N = Y.length; 
+  for (var i = 0; i < N/2; i++) 
   {
 
     Yp[2*i] = -Y[2*i+1] / N; 
     Yp[2*i+1] = Y[2*i] / N; 
   }
 
-  var yp = RF.doInvFFT(Yp); 
+  var yp = RF.doInvFFT(Yp, g.fNpoints); 
   var gh= JSROOT.CreateTGraph(g.fNpoints, g.fX, yp); 
   gh.fName = g.fName + "_hilbert"; 
   gh.fTitle = "Hilbert Transform of " + g.fTitle; 
