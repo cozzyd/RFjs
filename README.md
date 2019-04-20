@@ -14,7 +14,7 @@ To use, you'll need something like this before any of your scripts:
     <script type="text/javascript" src="rf.js"></script>
 
 
-See examples.html for some examples. 
+See https://cozzyd.github.io/rfjs/examples.html for some examples 
 
 
 
