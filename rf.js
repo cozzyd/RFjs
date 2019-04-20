@@ -374,28 +374,62 @@ RF.evalEven = function (g, t)
 
 
 
-RF.Mapper = function (nants, computeDeltaTs, usePair = function(i,j) { return true; }, canUse = function(i, x, y) { return true; } ) 
+/** A mapper defines a relationship between antennas and times. 
+ *  dims: n array with the names of the dimensions (e.g. ["phi","theta"] ), used also to detemrine the length (max 2)! 
+ *  nants: The number of antennas
+ *  computeDeltaTs:  function with prototype (i,j,x,y) which determines the delta t in terms 
+ *  of the parameters.  Dimensions higher than used will be passed 0 
+ *  usePair: a function with prototype (i,j) that determines if the pair of antennas can be used
+ *  canUse: a function with prototype (i,x,y) that determines if the antenna can be used
+ *
+ */ 
+
+RF.Mapper = function (dims, nants, computeDeltaTs, usePair = function(i,j) { return true; }, canUse = function(i, x, y) { return true; } ) 
 {
   var m = {}; 
+  m.ndims = dims.length; 
+  m.dims = dims 
   m.nant = nants; 
   m.deltaTs = computeDeltaTs; 
   m.usePair = usePair; 
   m.canUse = canUse; 
+
+  m.createHist = function(nx,xmin,xmax, ny,ymin,ymax)
+  {
+    var hist = null;
+    /* make the histogram */ 
+    if (this.ndims == 1) 
+    {
+      hist = JSROOT.CreateHistogram("TH1F", nx); 
+    }
+    else if (this.ndims == 2) 
+    {
+      hist = JSROOT.CreateHistogram("TH2F", nx,ny); 
+    }
+
+    hist.fXaxis.fXmin = xmin; 
+    hist.fXaxis.fXmax = xmax; 
+    hist.fXaxis.fTitle = this.dims[0]; 
+
+    if (this.ndims > 1)
+    {
+      hist.fYaxis.fXmin = ymin; 
+      hist.fYaxis.fXmax = ymax; 
+      hist.fYaxis.fTitle = this.dims[1]; 
+      hist.fZaxis.fTitle = "Average Cross-Correlation"; 
+    }
+    else
+    {
+      hist.fYaxis.fTitle = "Average Cross-Correlation"; 
+
+    }
+
+    return hist;
+  }
   return m; 
 }
 
 
-
-
-RF.Antenna = function(x,y,z, dx,dy,dz, max_phi,max_theta) 
-{
-  var ant = {};
-  ant.pos = [x,y,z];
-  ant.bore = [dx,dy,dz]; 
-  ant.phi_width = max_phi;
-  ant.theta_width = max_theta; 
-  return ant; 
-}
 
 
 RF.dotProduct = function(x,y, Nmax = 0) 
@@ -478,6 +512,41 @@ RF.wrap = function(x, period = 360, center = 0)
   return x - period * Math.floor((x-center+period/2)/period); 
 }
 
+
+/* One-dimensional angle mapper, 
+ *
+ *  Takes only one dimension (not antennas) since not defined if
+ *  antennas not all on one axis! 
+ **/ 
+
+RF.ElevationMapper = function(zs, c =0.3)
+{
+
+  return RF.Mapper( ["theta(deg)"], zs.length, 
+    function(i,j, theta_deg, unused) 
+    {
+      var theta = Math.PI / 180. * theta_deg; 
+      var dt= (zs[i]-zs[j])*Math.sin(theta)/c; 
+//      console.log(theta_deg,i,j, dt); 
+      return dt; 
+    } 
+  ); 
+}
+
+
+/** Used by angle mapper */ 
+RF.Antenna = function(x,y,z, dx=1,dy=0,dz=0, max_phi=180,max_theta=90) 
+{
+  var ant = {};
+  ant.pos = [x,y,z];
+  ant.bore = [dx,dy,dz]; 
+  ant.phi_width = max_phi;
+  ant.theta_width = max_theta; 
+  return ant; 
+}
+
+
+/* Two-dimensional angle mapper */ 
 RF.AngleMapper = function ( ants,  c = 0.3, phi_0 =0, theta_0 = 0 )
 {
   var n = ants.length; 
@@ -534,7 +603,7 @@ RF.AngleMapper = function ( ants,  c = 0.3, phi_0 =0, theta_0 = 0 )
   }
    
 
-  return RF.Mapper( ants.length , 
+  return RF.Mapper( ["phi (deg)","theta (deg)"],ants.length , 
 
     function (i,j, phi_deg, theta_deg)  //deltaTs
     {
@@ -559,7 +628,6 @@ RF.AngleMapper = function ( ants,  c = 0.3, phi_0 =0, theta_0 = 0 )
        return  (between && min_phi[i] < max_phi[i]) || (!between && min_phi[i] > max_phi[i]);
     }
   );
-
 
 }
 
@@ -613,6 +681,7 @@ RF.coherentSum = function( raw_graphs, times,upsample = 3 )
   {
     for (var i = 0; i < raw_graphs.length; i++) 
     {
+      if (raw_graphs[i] == null) graphs.push(null); 
       var gg = JSROOT.CreateTGraph(raw_graphs[i].fNpoints, raw_graphs[i].fX.slice(0), raw_graphs[i].fY.slice(0)); 
       RF.upsample(gg, upsample+1); 
       graphs.push(gg); 
@@ -626,17 +695,34 @@ RF.coherentSum = function( raw_graphs, times,upsample = 3 )
 
   //set up the grid, use min / max and dt of first graph 
 
-  var min = graphs[0].fX[0] - times[0]; 
-  var max = graphs[0].fX[graphs[0].fNpoints-1] - times[0]; 
-  var dt = (max-min)/(graphs[0].fNpoints -1); 
+  //find the first non-null graph
 
-  for (var i = 1; i < N; i++) 
+  var idx = -1;
+  for (var i = 0; i < graphs.length; i++) 
   {
+    if (graphs[i]!=null)
+    {
+      idx = i; 
+      break; 
+    }
+  }
+  if (idx == -1) 
+  {
+    return null;// all null
+  }
+
+  var min = graphs[idx].fX[0] - times[idx]; 
+  var max = graphs[idx].fX[graphs[idx].fNpoints-1] - times[idx]; 
+  var dt = (max-min)/(graphs[idx].fNpoints -1); 
+
+
+  for (var i = 0; i < graphs.length; i++) 
+  {
+    if (graphs[i]==null) continue;
     if (graphs[i].fX[0] -times[i]< min) min = graphs[i].fX[0]-times[i]; 
     if (graphs[i].fX[graphs[i].fNpoints-1] > max) max = graphs[i].fX[graphs[i].fNpoints-1] - times[i]; 
   }
-
-  var N = (max-min)/dt+1; 
+  var N = Math.floor((max-min)/dt+1); 
 
   var x = RF.range(min,N,dt); 
   var y= new Float32Array(N); 
@@ -645,6 +731,7 @@ RF.coherentSum = function( raw_graphs, times,upsample = 3 )
   {
     for (var j = 0; j < graphs.length; j++)
     {
+      if (graphs[j] == null) continue; 
       var val =  RF.evalEven(graphs[j], x[i]-times[j]); 
       if (!isNaN(val)) y[i] +=val; 
     }
@@ -742,34 +829,33 @@ RF.Spectrogram = function(title, ntime, tmin, tmax, nfreq, fmin, fmax)
 
 
 
-/** This sets up an interferometric map (which will be a TH2) 
- *  with times defined by the mapper. The delta t's and antennas used
+/** This sets up an interferometric map with times defined by the mapper. The delta t's and antennas used
  *  are calculated once at the beginning, which is efficient when one keeps
- *  reusing the same map
+ *  reusing the same map. 
+ *
+ *   
  *
  * */ 
-RF.InterferometricMap = function ( nx, xmin, xmax, ny, ymin,ymax, mapper) 
+RF.InterferometricMap = function ( mapper, nx, xmin, xmax, ny=0, ymin=0,ymax=0) 
 {
 
-  /* make the histogram */ 
-  this.hist = JSROOT.CreateHistogram("TH2F", nx,ny); 
-  this.hist.fXaxis.fXmin = xmin; 
-  this.hist.fXaxis.fXmax = xmax; 
-  this.hist.fYaxis.fXmin = ymin; 
-  this.hist.fYaxis.fXmax = ymax; 
+  this.mapper = mapper; 
+  this.ndims = mapper.ndims; 
+ 
+  this.hist = mapper.createHist(nx,xmin,xmax,ny,ymin,ymax)
 
   this.soln = RF.createArray(nx,ny); 
 
   this.usepair = RF.createArray(nx,ny);
   
   this.nx = nx; 
-  this.ny = ny; 
+  this.ny = this.ndims  ==1 ? 1 : ny; 
   this.ymin = ymin; 
   this.ymax = ymax; 
   this.xmin = xmin; 
   this.xmax = xmax; 
   this.dx = (xmax-xmin)/nx; 
-  this.dy = (ymax-ymin)/ny; 
+  this.dy =  ny > 0 ? (ymax-ymin)/ny : 0; 
   this.nant = mapper.nant;
   this.xcorrs = RF.createArray(this.nant, this.nant);
   this.navg = 0; 
@@ -830,7 +916,8 @@ RF.InterferometricMap = function ( nx, xmin, xmax, ny, ymin,ymax, mapper)
       for (var iy = 0; iy < this.ny; iy++) 
       {
         var x = (ix+0.5)*this.dx + xmin; 
-        var y = (iy+0.5)*this.dy + ymin; 
+        var y = this.ndims == 1 ? 0 
+                : (iy+0.5)*this.dy + ymin; 
 
         this.soln[ix][iy] = []; 
 
@@ -857,11 +944,11 @@ RF.InterferometricMap = function ( nx, xmin, xmax, ny, ymin,ymax, mapper)
     this.is_init = true; 
   }
 
-  this.setTitle = function (title, xtitle, ytitle) 
+  this.setTitle = function (title, xtitle=null, ytitle=null) 
   {
     this.hist.fTitle = title;
-    this.hist.fXaxis.fTitle = xtitle;
-    this.hist.fYaxis.fTitle = ytitle;
+    if (xtitle !=null) this.hist.fXaxis.fTitle = xtitle;
+    if (xtitle !=null) this.hist.fYaxis.fTitle = ytitle;
   }
 
 
@@ -876,14 +963,7 @@ RF.InterferometricMap = function ( nx, xmin, xmax, ny, ymin,ymax, mapper)
       j = tmp; 
     }
 
-    var h = JSROOT.CreateHistogram("TH2F", nx,ny); 
-    h.fXaxis.fXmin = xmin; 
-    h.fXaxis.fXmax = xmax; 
-    h.fYaxis.fXmin = ymin; 
-    h.fYaxis.fXmax = ymax; 
-    h.fXaxis.fTitle = "azimuth (degrees)"; 
-    h.fYaxis.fTitle = "elevation (degrees)"; 
-    h.fYaxis.fTitle = "elevation (degrees)"; 
+    var h = this.mapper.createHist(this.nx,this.xmin,this.xmax,this.ny,this.ymin,this.ymax);
     h.fTitle = "#Delta T (" + i + "," + j+")"; 
 
     for (var ix = 0; ix < this.nx; ix++)
@@ -898,7 +978,7 @@ RF.InterferometricMap = function ( nx, xmin, xmax, ny, ymin,ymax, mapper)
             val = this.soln[ix][iy][ipair].dt; 
           }
         }
-         var ibin = (this.nx+2) * (iy+1) + ix+1;
+         var ibin = ndim == 1 ? ix+1 : ((this.nx+2) * (iy+1) + ix+1);
          h.setBinContent(ibin, val); 
       }
     }
@@ -1022,12 +1102,13 @@ RF.InterferometricMap = function ( nx, xmin, xmax, ny, ymin,ymax, mapper)
         }
 
 //        console.log(ix,iy, sum,norm);
-        var ibin = (this.nx+2) * (iy+1) + ix+1;
+        var ibin = (this.ndims == 1 ? ix +1 : (this.nx+2) * (iy+1) + ix+1) ;
 
-        var add_to = avg ? this.hist.getBinContent(ix+1,iy+1) * this.navg : 0;
+        var add_to = avg ? (ndim == 1 ? this.hist.getBinContent(ix+1) : this.hist.getBinContent(ix+1,iy+1)) * this.navg : 0;
 
         var nsum = avg ? (this.navg+1) : 1; 
         var val = norm ? sum/norm : 0; 
+//        console.log(ix, iy, ibin,val); 
         this.hist.setBinContent(ibin, (add_to + val)/nsum) ;
       }
     }
@@ -1036,8 +1117,8 @@ RF.InterferometricMap = function ( nx, xmin, xmax, ny, ymin,ymax, mapper)
     else this.navg = 0; 
   }
 
-}
 
+}
 
 
 /** Perform an IIR filter (in-place) on a TGraph (g) 
@@ -1075,6 +1156,8 @@ RF.IIRFilter = function(g, b,a)
     g.fY[i] = yNew[i]; 
   }
 }
+
+
 
 
 RF.shiftTimes = function(g, t) 
