@@ -4,6 +4,8 @@
  *
  * rf.js 
  *
+ * Cosmin Deaconu <cozzyd@kicp.uchicago.edu>
+ *
  * Signal processing routines using an emscriptened KissFFT and ROOTjs TGraph's
  * Sorry, I don't really know javascript, so this is probably all terrible. 
  *
@@ -17,14 +19,7 @@
     <script type="text/javascript" src="rf.js"></script>
     <script type="text/javascript" src="myawesomestuff.js"></script>
 
- 
- * Cosmin Deaconu <cozzyd@kicp.uchicago.edu>
- *
  */ 
-
-
-
-
 
 
 
@@ -47,8 +42,9 @@ RF.getFFT =function (size)
 };
 
 
-/** performs FFT */ 
-
+/** performs a forward FFT
+ * 
+ **/ 
 RF.doFFT = function (y) 
 {
     var fft = RF.getFFT(y.length); 
@@ -56,15 +52,24 @@ RF.doFFT = function (y)
 };
 
 
-/** Performs inverse FFT */ 
+/** Performs inverse FFT 
+ *
+ * One can optionally specify the number of points in the time domain otherwise will be even. 
+ **/ 
 RF.doInvFFT = function(Y, Nt = 0) 
 {
-  var fft = RF.getFFT(Nt == 0 ? Y.length : Nt); 
+  var fft = RF.getFFT(Nt == 0 ? Y.length-2 : Nt); 
   return fft.inverse(Y).slice(0); 
 };
 
 
-/** Returns the maximum time and value */ 
+/** Returns the maximum time and value  of a TGraph
+ *
+ * Unsigned will use absolute value. 
+ *
+ * If max_dt is non-zero, will only consider up to max_dt
+ *
+ * */ 
 RF.getMaximumTimeAndValue = function(g, unsigned=true, max_dt = 0) 
 {
   var max = 0; 
@@ -188,7 +193,7 @@ RF.hilbertTransform = function(g, Y = null)
 }
 
 
-/** Creates the hilbert envelope of a graph */ 
+/** Creates the hilbert envelope of a TGraph */ 
 
 RF.hilbertEnvelope = function(g, Y = null, gh = null, H = null) 
 {
@@ -287,7 +292,7 @@ RF.range = function(start, N, step = 1)
 
 
 /* Calculates the cross-correlation of two graphs, returning the cross-correlation the time domain 
- * Asumes they have the same sampling
+ * Assumes they have the same sampling
  * */ 
 
 RF.crossCorrelation = function ( g1, g2, pad=true, upsample = 4, scale = null, min_freq = 0, max_freq = 0) 
@@ -352,7 +357,7 @@ RF.crossCorrelation = function ( g1, g2, pad=true, upsample = 4, scale = null, m
 }
 
 
-/** Interpolates a graph at a point, assuming it's evenly spaced */ 
+/** Linearly interpolates a graph at a point, assuming it's evenly spaced */ 
 RF.evalEven = function (g, t) 
 {
 
