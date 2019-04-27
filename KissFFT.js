@@ -1,3 +1,6 @@
+
+/* See FFT.js for license info */ 
+
 var KissFFTModule = function(KissFFTModule) {
   KissFFTModule = KissFFTModule || {};
   var Module = KissFFTModule;

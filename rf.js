@@ -3,20 +3,34 @@
 /** 
  *
  * rf.js 
+ * Signal processing routines using an emscriptened KissFFT and ROOTjs TGraph's
  *
  * Cosmin Deaconu <cozzyd@kicp.uchicago.edu>
+ * @license magnet:?xt=urn:btih:1f739d935676111cfff4b4693e3816e664797050&dn=gpl-3.0.txt GPL-v3-or-Later
+ * 
  *
- * Signal processing routines using an emscriptened KissFFT and ROOTjs TGraph's
+ *   This program is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    This program is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ *
  * Sorry, I don't really know javascript, so this is probably all terrible. 
- *
- *
  * Because this relies on KissFFT and jsroot, you'll need to include FFT.js and KissFFT.js ahead of this, e.g:
  *
  *
     <script type="text/javascript" src="jsroot/scripts/JSRootCore.js?2d&hierarchy&io&tree"> </script>
-    <script type="text/javascript" src="KissFFT.js"></script>
-    <script type="text/javascript" src="FFT.js"></script>
-    <script type="text/javascript" src="rf.js"></script>
+    <script type="text/javascript" src="rfjs/KissFFT.js"></script>
+    <script type="text/javascript" src="rfjs/FFT.js"></script>
+    <script type="text/javascript" src="rfjs/rf.js"></script>
     <script type="text/javascript" src="myawesomestuff.js"></script>
 
  */ 

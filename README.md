@@ -9,9 +9,9 @@ Requires jsroot (https://github.com/root-project/jsroot) and incorporate an emsc
 To use, you'll need something like this before any of your scripts: 
 
     <script type="text/javascript" src="jsroot/scripts/JSRootCore.js?2d&hierarchy&io&tree"> </script>
-    <script type="text/javascript" src="KissFFT.js"></script>
-    <script type="text/javascript" src="FFT.js"></script>
-    <script type="text/javascript" src="rf.js"></script>
+    <script type="text/javascript" src="rfjs/KissFFT.js"></script>
+    <script type="text/javascript" src="rfjs/FFT.js"></script>
+    <script type="text/javascript" src="rfjs/rf.js"></script>
 
 
 See https://cozzyd.github.io/rfjs/examples.html for some examples 
