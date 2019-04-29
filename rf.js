@@ -389,7 +389,7 @@ RF.evalEven = function (g, t)
 
 
 /** A mapper defines a relationship between antennas and times. 
- *  dims: n array with the names of the dimensions (e.g. ["phi","theta"] ), used also to detemrine the length (max 2)! 
+ *  dims: an array with the names of the dimensions (e.g. ["phi","theta"] ), used also to detemrine the length (max 2)! 
  *  nants: The number of antennas
  *  computeDeltaTs:  function with prototype (i,j,x,y) which determines the delta t in terms 
  *  of the parameters.  Dimensions higher than used will be passed 0 
@@ -542,7 +542,7 @@ RF.ElevationMapper = function(zs, c =0.3)
       var theta = Math.PI / 180. * theta_deg; 
       var dt= (zs[i]-zs[j])*Math.sin(theta)/c; 
 //      console.log(theta_deg,i,j, dt); 
-      return -dt; 
+      return dt; 
     } 
   ); 
 }
@@ -624,7 +624,7 @@ RF.AngleMapper = function ( ants,  c = 0.3, phi_0 =0, theta_0 = 0 )
       var phi = Math.PI / 180. * (phi_deg - phi_0); 
       var theta = Math.PI / 180. * (theta_deg - theta_0); 
       var dir = [ Math.cos(phi) * Math.cos(theta), Math.sin(phi) * Math.cos(theta), Math.sin(theta) ]; 
-      var diff = [ ants[j].pos[0] - ants[i].pos[0], ants[j].pos[1] - ants[i].pos[1], ants[j].pos[2] - ants[i].pos[2] ];
+      var diff = [ ants[i].pos[0] - ants[j].pos[0], ants[i].pos[1] - ants[j].pos[1], ants[i].pos[2] - ants[j].pos[2] ];
       return RF.dotProduct(diff,dir) / c; 
     }, 
 
@@ -1064,7 +1064,7 @@ RF.InterferometricMap = function ( mapper, nx, xmin, xmax, ny=0, ymin=0,ymax=0, 
 
   }
 
-  this.compute = function(channels, avg = false, reverse_sign = true) 
+  this.compute = function(channels, avg = false, reverse_sign = false) 
   {
     this.init(); 
 
