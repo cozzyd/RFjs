@@ -540,7 +540,7 @@ RF.ElevationMapper = function(zs, c =0.3)
     function(i,j, theta_deg, unused) 
     {
       var theta = Math.PI / 180. * theta_deg; 
-      var dt= (zs[i]-zs[j])*Math.sin(theta)/c; 
+      var dt= (zs[i]-zs[j])*Math.sin(-theta)/c; 
 //      console.log(theta_deg,i,j, dt); 
       return dt; 
     } 
@@ -625,7 +625,7 @@ RF.AngleMapper = function ( ants,  c = 0.3, phi_0 =0, theta_0 = 0 )
       var theta = Math.PI / 180. * (theta_deg - theta_0); 
       var dir = [ Math.cos(phi) * Math.cos(theta), Math.sin(phi) * Math.cos(theta), Math.sin(theta) ]; 
       var diff = [ ants[i].pos[0] - ants[j].pos[0], ants[i].pos[1] - ants[j].pos[1], ants[i].pos[2] - ants[j].pos[2] ];
-      return RF.dotProduct(diff,dir) / c; 
+      return -RF.dotProduct(diff,dir) / c; 
     }, 
 
     function( i, j)  //usePair
@@ -1114,7 +1114,7 @@ RF.InterferometricMap = function ( mapper, nx, xmin, xmax, ny=0, ymin=0,ymax=0, 
             continue; 
           }
           var this_dt = soln.dt;
-          sum += RF.evalEven(this.xcorrs[soln.i][soln.j], reverse_sign ? -this_dt: this_dt); 
+          sum += RF.evalEven(this.xcorrs[soln.i][soln.j], reverse_sign ? this_dt: -this_dt); 
         }
 
 //        console.log(ix,iy, sum,norm);
