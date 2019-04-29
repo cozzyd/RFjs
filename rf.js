@@ -540,9 +540,9 @@ RF.ElevationMapper = function(zs, c =0.3)
     function(i,j, theta_deg, unused) 
     {
       var theta = Math.PI / 180. * theta_deg; 
-      var dt= (zs[i]-zs[j])*Math.sin(-theta)/c; 
+      var dt= (zs[i]-zs[j])*Math.sin(theta)/c; 
 //      console.log(theta_deg,i,j, dt); 
-      return dt; 
+      return -dt; 
     } 
   ); 
 }
@@ -1002,7 +1002,7 @@ RF.InterferometricMap = function ( mapper, nx, xmin, xmax, ny=0, ymin=0,ymax=0, 
     return h; 
   }
 
-  this.drawXCorrs = function(where, style_fn = null, max_delay=0) 
+  this.drawXCorrs = function(where, style_fn = null, max_delay=0, h2_style='margin-top:40%;width:100%;text-align:center;') 
   {
     this.init(); 
     var disp = new JSROOT.GridDisplay(where, "grid" + this.nant + "x" + this.nant); 
@@ -1049,7 +1049,7 @@ RF.InterferometricMap = function ( mapper, nx, xmin, xmax, ny=0, ymin=0,ymax=0, 
           var vals = RF.getMaximumTimeAndValue(this.xcorrs[i][j], true, max_delay); 
 
           var color_frame = document.getElementById(where+"_"+(j + this.nant*i).toString()); 
-          color_frame.innerHTML = "<p> "+j+" WITH "+ i + " </p><h2 style='margin-top:40%;width:100%;text-align:center;'> corr<sub>max</sub>="+vals[1].toFixed(4)+"<br>t= " + vals[0].toFixed(2)+ "</h2>"; 
+          color_frame.innerHTML = "<p> "+j+" WITH "+ i + " </p><h2 style='"+h2_style+"''> corr<sub>max</sub>="+vals[1].toFixed(4)+"<br>t= " + vals[0].toFixed(2)+ "</h2>"; 
           var deg = (255-Math.floor(Math.abs(vals[1])*255)).toString(16); 
           if (deg.length<2 ) deg = "0"+deg; 
           var string = vals[1] > 0 ? "#" + "ff" + deg+deg : " #" + deg +deg+"ff"; 
