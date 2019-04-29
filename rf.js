@@ -850,7 +850,7 @@ RF.Spectrogram = function(title, ntime, tmin, tmax, nfreq, fmin, fmax)
  *   
  *
  * */ 
-RF.InterferometricMap = function ( mapper, nx, xmin, xmax, ny=0, ymin=0,ymax=0) 
+RF.InterferometricMap = function ( mapper, nx, xmin, xmax, ny=0, ymin=0,ymax=0, xwrap = false, ywrap = false) 
 {
 
   this.mapper = mapper; 
@@ -861,6 +861,8 @@ RF.InterferometricMap = function ( mapper, nx, xmin, xmax, ny=0, ymin=0,ymax=0)
   this.soln = RF.createArray(nx,ny); 
 
   this.usepair = RF.createArray(nx,ny);
+  this.xwrap = xwrap;
+  this.ywrap = ywrap;
   
   this.nx = nx; 
   this.ny = this.ndims  ==1 ? 1 : ny; 
@@ -1131,6 +1133,91 @@ RF.InterferometricMap = function ( mapper, nx, xmin, xmax, ny=0, ymin=0,ymax=0)
     else this.navg = 0; 
   }
 
+  this.getMaxes = function(N = 1, min_distance = 10) 
+  {
+    var maxes = []; 
+    var hist = this.hist; 
+    for (var imax = 0; imax < N; imax++) 
+    {
+      var max = 0; 
+      var max_x = 0; 
+      var max_y = 0; 
+
+      for (var i = 1; i<= hist.fXaxis.fNbins; i++) 
+      {
+        for (var j = 1; j <= (this.ndims > 1 ? hist.fYaxis.fNbins : 1); j++) 
+        {
+
+           var val = this.ndims > 1 ? hist.getBinContent(i,j) : hist.getBinContent(i); 
+
+           if (val > max) 
+           {
+              var x = hist.fXaxis.GetBinCenter(i);
+              var y = this.ndim > 1 ?  hist.fYaxis.GetBinCenter(j) : 0;
+              if (maxes.length > 0) 
+              {
+                var too_close = false; 
+
+                //check that we're not too close to a max
+
+                for (var iimax = 0; iimax< maxes.length; iimax++) 
+                {
+                  var xdiff = maxes[iimax].x-x; 
+
+                  if (this.xwrap) 
+                  {
+                    if (xdiff > (this.xmax-this.xmin)/2) 
+                    {
+                      xdiff = (this.xmax-this.xmin)-xdiff;
+                    }
+
+                    if (xdiff < -(this.xmax-this.xmin)/2) 
+                    {
+                      xdiff = (this.xmax-this.xmin)+xdiff;
+                    }
+
+                  }
+
+                  var ydiff = this.ndims > 1 ?  maxes[iimax].y-y : 0; 
+
+                  if (this.ndims > 1 && this.ywrap) 
+                  {
+                    if (ydiff > (this.ymax-this.ymin)/2) 
+                    {
+                      ydiff = (this.ymax-this.ymin)-ydiff;
+                    }
+
+                    if (ydiff < -(this.ymax-this.ymin)/2) 
+                    {
+                      ydiff = (this.ymax-this.ymin)+ydiff;
+                    }
+
+                  }
+
+                  if (xdiff*xdiff + ydiff*ydiff < min_distance*min_distance)
+                  {
+                    too_close = true; 
+                    break; 
+                  }
+                }
+
+                if (too_close) continue; 
+              }
+
+              max = val; 
+              max_x = x; 
+              max_y = y; 
+            }
+        }
+
+      }
+
+      var this_max= { x: max_x, y: max_y, max: max};
+      maxes.push(this_max); 
+
+    }
+    return maxes; 
+  }
 
 }
 

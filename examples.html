@@ -263,13 +263,15 @@ var mapper_elev = RF.ElevationMapper(zant.slice(0,4),c);
 var map_elev = new RF.InterferometricMap(mapper_elev, 180,-90,90); 
 map_elev.setTitle("String 1 Elevation Map"); 
 map_elev.compute(gs.slice(0,4)); 
+console.log(map_elev.getMaxes()); 
 JSROOT.draw('c5', map_elev.hist);
 
 //set up angle mapper for all antennas
 var mapper_ang = RF.AngleMapper(ants,c); 
-var map_ang = new RF.InterferometricMap(mapper_ang, 360,-180,180,180,-90,90); 
+var map_ang = new RF.InterferometricMap(mapper_ang, 360,-180,180,180,-90,90,true,false); 
 map_ang.setTitle("Array Angle Map"); 
 map_ang.compute(gs.slice(0,Nant)); 
+console.log(map_ang.getMaxes()); 
 JSROOT.draw('c6', map_ang.hist,"colz", function(painter) {
       painter.ConfigureUserClickHandler( 
       function(info)  
