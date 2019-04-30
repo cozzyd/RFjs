@@ -281,27 +281,15 @@ JSROOT.draw('c6', map_ang.hist,"colz", function(painter) {
         var clicked_h = info.obj; 
         var x = clicked_h.fXaxis.GetBinCenter(binx);
         var y = clicked_h.fYaxis.GetBinCenter(biny);
-
-         var times = []; 
-         for (var i = 0; i < gs.length; i++) 
-         {
-           times.push(i == 0 ? 0 : mapper_ang.deltaTs(i,0,x,y)); 
-         }
-
          JSROOT.cleanup('c7'); 
-         var coh = RF.coherentSum(gs,times); 
+         var coh = mapper_ang.coherentSum(gs,[x,y]); 
          coh.fTitle='Coherent sum at phi='+x+',theta='+y+';ns;sum'; 
          JSROOT.draw('c7',coh); 
       });
    }); 
 
 //now let's construct the coherent waveform at the known location
-var times = []; 
-for (var i = 0; i < gs.length; i++) 
-{
-   times.push(i == 0 ? 0 : mapper_ang.deltaTs(i,0,phi,theta)); 
-}
-var coh = RF.coherentSum(gs,times); 
+var coh = mapper_ang.coherentSum(gs,[phi,theta]); 
 coh.fTitle='Coherent sum at phi='+phi+',theta='+theta+';ns;sum'; 
 JSROOT.draw('c7',coh); 
 

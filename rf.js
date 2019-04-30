@@ -440,6 +440,91 @@ RF.Mapper = function (dims, nants, computeDeltaTs, usePair = function(i,j) { ret
 
     return hist;
   }
+
+  m.coherentSum = function(raw_graphs, X, upsample =3, reverse_sign= false) 
+  {
+
+    if (raw_graphs.length != this.nant) return null; 
+
+    //check to make sure not all graphs are null! 
+    var first_non_null = -1; 
+    for (var i = 0; i < raw_graphs.length; i++) 
+    {
+      if (raw_graphs[i] != null) 
+      {
+        first_non_null = i; 
+        break; 
+      }
+    }
+    if (first_non_null < 0) return null; 
+
+
+    var graphs = []; 
+
+    // if upsampling, make an upsampled copy 
+    //
+    if (upsample > 0) 
+    {
+      for (var i = 0; i < raw_graphs.length; i++) 
+      {
+        if (raw_graphs[i] == null) graphs.push(null); 
+        var gg = JSROOT.CreateTGraph(raw_graphs[i].fNpoints, raw_graphs[i].fX.slice(0), raw_graphs[i].fY.slice(0)); 
+        RF.upsample(gg, upsample+1); 
+        graphs.push(gg); 
+      }
+    }
+    else
+    {
+      graphs = raw_graphs; 
+    }
+
+    //use first nonnull as time reference
+
+    var idx = first_non_null; 
+
+    var min = graphs[idx].fX[0];
+    var max = graphs[idx].fX[graphs[idx].fNpoints-1];
+    var dt = (max-min)/(graphs[idx].fNpoints -1); 
+
+    var times = []; 
+    for (var i = 0; i < graphs.length; i++) 
+    {
+      if (graphs[i]==null)
+      {
+        times.push(null); 
+      }
+      var this_time = (i == idx ? 0 : this.deltaTs(idx,i, X[0], this.ndims > 1 ? X[1] : 0)); 
+      if (reverse_sign) this_time *=-1; 
+      times.push(this_time); 
+      console.log(i,X,this_time); 
+
+      if (graphs[i].fX[0] -this_time< min) min = graphs[i].fX[0]-this_time;
+      if (graphs[i].fX[graphs[i].fNpoints-1] - this_time > max) max = graphs[i].fX[graphs[i].fNpoints-1] - this_time; 
+
+
+    }
+
+    var N = Math.floor((max-min)/dt+1); 
+
+    var x = RF.range(min,N,dt); 
+    var y= new Float32Array(N); 
+
+    for (var i = 0; i < N; i++) 
+    {
+      for (var j = 0; j < graphs.length; j++)
+      {
+        if (graphs[j] == null) continue; 
+        var val =  RF.evalEven(graphs[j], x[i]-times[j]); 
+        if (!isNaN(val)) y[i] +=val; 
+      }
+    }
+
+    var ans = JSROOT.CreateTGraph(N,x,y); 
+    ans.fTitle = "Coherent Sum";
+    ans.InvertBit(JSROOT.BIT(18)); 
+    return ans; 
+  }
+
   return m; 
 }
 
@@ -527,6 +612,20 @@ RF.wrap = function(x, period = 360, center = 0)
 }
 
 
+RF.XYMapper = function( xs, ys, c=1) 
+{
+
+  return RF.mapper ( ["x (ft)","y (ft)"], xs.length,
+      function(i,j, x,y) 
+      {
+
+        var dist_i = Math.sqrt(Math.pow(xs[i]-x,2) + Math.pow(ys[i]-y,2)); 
+        var dist_j = Math.sqrt(Math.pow(xs[j]-x,2) + Math.pow(ys[j]-y,2)); 
+        return (dist_i-dist_j)/c; 
+      }); 
+}
+
+
 /* One-dimensional angle mapper, 
  *
  *  Takes only one dimension (not antennas) since not defined if
@@ -542,7 +641,7 @@ RF.ElevationMapper = function(zs, c =0.3)
       var theta = Math.PI / 180. * theta_deg; 
       var dt= (zs[i]-zs[j])*Math.sin(theta)/c; 
 //      console.log(theta_deg,i,j, dt); 
-      return -dt; 
+      return dt; 
     } 
   ); 
 }
@@ -625,7 +724,7 @@ RF.AngleMapper = function ( ants,  c = 0.3, phi_0 =0, theta_0 = 0 )
       var theta = Math.PI / 180. * (theta_deg - theta_0); 
       var dir = [ Math.cos(phi) * Math.cos(theta), Math.sin(phi) * Math.cos(theta), Math.sin(theta) ]; 
       var diff = [ ants[i].pos[0] - ants[j].pos[0], ants[i].pos[1] - ants[j].pos[1], ants[i].pos[2] - ants[j].pos[2] ];
-      return -RF.dotProduct(diff,dir) / c; 
+      return RF.dotProduct(diff,dir) / c; 
     }, 
 
     function( i, j)  //usePair
@@ -679,84 +778,6 @@ RF.cropWave = function(g, tmin, tmax)
 }
 
 
-/** Computes a coherent sum of graphs with the given time delays */
-
-RF.coherentSum = function( raw_graphs, times,upsample = 3 ) 
-{
-
-  if (!(raw_graphs.length >0) || raw_graphs.length!=times.length) return null; 
-
-
-  var graphs = []; 
-
-  // if upsampling, make an upsampled copy 
-  //
-  if (upsample > 0) 
-  {
-    for (var i = 0; i < raw_graphs.length; i++) 
-    {
-      if (raw_graphs[i] == null) graphs.push(null); 
-      var gg = JSROOT.CreateTGraph(raw_graphs[i].fNpoints, raw_graphs[i].fX.slice(0), raw_graphs[i].fY.slice(0)); 
-      RF.upsample(gg, upsample+1); 
-      graphs.push(gg); 
-    }
-  }
-  else
-  {
-    for (var i = 0; i < raw_graphs.length; i++) graphs.push(raw_graphs[i]); 
-  }
-
-
-  //set up the grid, use min / max and dt of first graph 
-
-  //find the first non-null graph
-
-  var idx = -1;
-  for (var i = 0; i < graphs.length; i++) 
-  {
-    if (graphs[i]!=null)
-    {
-      idx = i; 
-      break; 
-    }
-  }
-  if (idx == -1) 
-  {
-    return null;// all null
-  }
-
-  var min = graphs[idx].fX[0] - times[idx]; 
-  var max = graphs[idx].fX[graphs[idx].fNpoints-1] - times[idx]; 
-  var dt = (max-min)/(graphs[idx].fNpoints -1); 
-
-
-  for (var i = 0; i < graphs.length; i++) 
-  {
-    if (graphs[i]==null) continue;
-    if (graphs[i].fX[0] -times[i]< min) min = graphs[i].fX[0]-times[i]; 
-    if (graphs[i].fX[graphs[i].fNpoints-1] > max) max = graphs[i].fX[graphs[i].fNpoints-1] - times[i]; 
-  }
-  var N = Math.floor((max-min)/dt+1); 
-
-  var x = RF.range(min,N,dt); 
-  var y= new Float32Array(N); 
-
-  for (var i = 0; i < N; i++) 
-  {
-    for (var j = 0; j < graphs.length; j++)
-    {
-      if (graphs[j] == null) continue; 
-      var val =  RF.evalEven(graphs[j], x[i]-times[j]); 
-      if (!isNaN(val)) y[i] +=val; 
-    }
-  }
-
-  var ans = JSROOT.CreateTGraph(N,x,y); 
-  ans.fTitle = "Coherent Sum";
-  ans.InvertBit(JSROOT.BIT(18)); 
-  return ans; 
-
-}
 
 
 RF.Spectrogram = function(title, ntime, tmin, tmax, nfreq, fmin, fmax) 
@@ -1114,7 +1135,7 @@ RF.InterferometricMap = function ( mapper, nx, xmin, xmax, ny=0, ymin=0,ymax=0, 
             continue; 
           }
           var this_dt = soln.dt;
-          sum += RF.evalEven(this.xcorrs[soln.i][soln.j], reverse_sign ? this_dt: -this_dt); 
+          sum += RF.evalEven(this.xcorrs[soln.i][soln.j], reverse_sign ? -this_dt: this_dt); 
         }
 
 //        console.log(ix,iy, sum,norm);
