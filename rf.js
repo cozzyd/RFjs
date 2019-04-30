@@ -496,7 +496,7 @@ RF.Mapper = function (dims, nants, computeDeltaTs, usePair = function(i,j) { ret
       var this_time = (i == idx ? 0 : this.deltaTs(idx,i, X[0], this.ndims > 1 ? X[1] : 0)); 
       if (reverse_sign) this_time *=-1; 
       times.push(this_time); 
-      console.log(i,X,this_time); 
+//      console.log(i,X,this_time); 
 
       if (graphs[i].fX[0] -this_time< min) min = graphs[i].fX[0]-this_time;
       if (graphs[i].fX[graphs[i].fNpoints-1] - this_time > max) max = graphs[i].fX[graphs[i].fNpoints-1] - this_time; 
