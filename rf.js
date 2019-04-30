@@ -641,7 +641,7 @@ RF.ElevationMapper = function(zs, c =0.3)
       var theta = Math.PI / 180. * theta_deg; 
       var dt= (zs[i]-zs[j])*Math.sin(theta)/c; 
 //      console.log(theta_deg,i,j, dt); 
-      return dt; 
+      return -dt; 
     } 
   ); 
 }
@@ -724,7 +724,7 @@ RF.AngleMapper = function ( ants,  c = 0.3, phi_0 =0, theta_0 = 0 )
       var theta = Math.PI / 180. * (theta_deg - theta_0); 
       var dir = [ Math.cos(phi) * Math.cos(theta), Math.sin(phi) * Math.cos(theta), Math.sin(theta) ]; 
       var diff = [ ants[i].pos[0] - ants[j].pos[0], ants[i].pos[1] - ants[j].pos[1], ants[i].pos[2] - ants[j].pos[2] ];
-      return RF.dotProduct(diff,dir) / c; 
+      return -RF.dotProduct(diff,dir) / c; 
     }, 
 
     function( i, j)  //usePair

@@ -224,7 +224,7 @@ for (var i = 0; i < Nant; i++)
  // figure out the correct time at this antenna, t=0 at 0,0,0
 
   var X = [xant[i],yant[i],zant[i]]; 
-  var t_signal = RF.dotProduct(X,k)/c; 
+  var t_signal = -RF.dotProduct(X,k)/c; 
 
   //start with some noise
   var ys = RF.randomGaussian(N,0,noise); 
