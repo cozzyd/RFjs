@@ -256,7 +256,7 @@ for (var i = 0; i < Nant; i++)
 
 var xcorr = RF.crossCorrelation(gs[0],gs[1]); 
 xcorr.fTitle = "Cross-Correlation 0 vs 1;ns;correlation"; 
-JSROOT.draw('c4',xcorr);
+JSROOT.draw('c4',xcorr,"l");
 
 //setup elevation mapper for first 4 antennas
 var mapper_elev = RF.ElevationMapper(zant.slice(0,4),c); 
@@ -284,14 +284,14 @@ JSROOT.draw('c6', map_ang.hist,"colz", function(painter) {
          JSROOT.cleanup('c7'); 
          var coh = mapper_ang.coherentSum(gs,[x,y]); 
          coh.fTitle='Coherent sum at phi='+x+',theta='+y+';ns;sum'; 
-         JSROOT.draw('c7',coh); 
+         JSROOT.draw('c7',coh,"l"); 
       });
    }); 
 
 //now let's construct the coherent waveform at the known location
 var coh = mapper_ang.coherentSum(gs,[phi,theta]); 
 coh.fTitle='Coherent sum at phi='+phi+',theta='+theta+';ns;sum'; 
-JSROOT.draw('c7',coh); 
+JSROOT.draw('c7',coh,"l"); 
 
 
         </textarea>
