@@ -309,7 +309,7 @@ RF.range = function(start, N, step = 1)
  * Assumes they have the same sampling
  * */ 
 
-RF.crossCorrelation = function ( g1, g2, pad=true, upsample = 4, scale = null, min_freq = 0, max_freq = 0) 
+RF.crossCorrelation = function ( g1, g2, pad=true, upsample_factor = 4, scale = null, min_freq = 0, max_freq = 0) 
 {
   
   if (scale == null) scale = RF.getRMS(g1) * RF.getRMS(g2) ;
@@ -336,7 +336,7 @@ RF.crossCorrelation = function ( g1, g2, pad=true, upsample = 4, scale = null, m
   var Y1 = RF.doFFT(y1); 
   var Y2 = RF.doFFT(y2); 
 
-  var Y = new Float32Array(upsample * Y1.length); 
+  var Y = new Float32Array(upsample_factor * Y1.length); 
 
   for (var i = 0; i < N/2+1;i++) 
   {
@@ -360,7 +360,7 @@ RF.crossCorrelation = function ( g1, g2, pad=true, upsample = 4, scale = null, m
   }
 
   N = y.length; 
-  dt = dt/upsample; 
+  dt = dt/upsample_factor; 
   var x = RF.range(-N/2*dt+g1.fX[0]-g2.fX[0], N, dt); 
   var g = JSROOT.CreateTGraph(y.length, x, yrotated); 
 
@@ -441,7 +441,7 @@ RF.Mapper = function (dims, nants, computeDeltaTs, usePair = function(i,j) { ret
     return hist;
   }
 
-  m.coherentSum = function(raw_graphs, X, upsample =3, reverse_sign= false) 
+  m.coherentSum = function(raw_graphs, X, upsample_factor =3, reverse_sign= false) 
   {
 
     if (raw_graphs.length != this.nant) return null; 
@@ -463,13 +463,13 @@ RF.Mapper = function (dims, nants, computeDeltaTs, usePair = function(i,j) { ret
 
     // if upsampling, make an upsampled copy 
     //
-    if (upsample > 0) 
+    if (upsample_factor > 0) 
     {
       for (var i = 0; i < raw_graphs.length; i++) 
       {
         if (raw_graphs[i] == null) graphs.push(null); 
         var gg = JSROOT.CreateTGraph(raw_graphs[i].fNpoints, raw_graphs[i].fX.slice(0), raw_graphs[i].fY.slice(0)); 
-        RF.upsample(gg, upsample+1); 
+        RF.upsample(gg, upsample_factor+1); 
         graphs.push(gg); 
       }
     }
@@ -905,7 +905,7 @@ RF.InterferometricMap = function ( mapper, nx, xmin, xmax, ny=0, ymin=0,ymax=0, 
   this.fmax = 0;
 
 
-  this.upsample = 4; 
+  this.upsample_factor = 4; 
   this.is_init = false; 
 
 
@@ -1119,7 +1119,7 @@ RF.InterferometricMap = function ( mapper, nx, xmin, xmax, ny=0, ymin=0,ymax=0, 
         if (channels[jant] == null) continue;
         if (this.usepair[iant][jant]) 
         {
-          var G = RF.crossCorrelation(channels[iant], channels[jant],true,this.upsample,null,this.fmin,this.fmax); 
+          var G = RF.crossCorrelation(channels[iant], channels[jant],true,this.upsample_factor,null,this.fmin,this.fmax); 
           this.xcorrs[iant][jant] = G; 
         }
       }
@@ -1293,4 +1293,81 @@ RF.shiftTimes = function(g, t)
 {
   if (g==null) return; 
   for (var i = 0; i < g.fNpoints; i++) { g.fX[i] +=t; }
+}
+
+RF.sumWithDelays = function( raw_graphs, times,upsample = 3 ) 
+{
+
+  if (!(raw_graphs.length >0) || raw_graphs.length!=times.length) return null; 
+
+
+  var graphs = []; 
+
+  // if upsampling, make an upsampled copy 
+  //
+  if (upsample > 0) 
+  {
+    for (var i = 0; i < raw_graphs.length; i++) 
+    {
+      if (raw_graphs[i] == null) graphs.push(null); 
+      var gg = JSROOT.CreateTGraph(raw_graphs[i].fNpoints, raw_graphs[i].fX.slice(0), raw_graphs[i].fY.slice(0)); 
+      RF.upsample(gg, upsample+1); 
+      graphs.push(gg); 
+    }
+  }
+  else
+  {
+    for (var i = 0; i < raw_graphs.length; i++) graphs.push(raw_graphs[i]); 
+  }
+
+
+  //set up the grid, use min / max and dt of first graph 
+
+  //find the first non-null graph
+
+  var idx = -1;
+  for (var i = 0; i < graphs.length; i++) 
+  {
+    if (graphs[i]!=null)
+    {
+      idx = i; 
+      break; 
+    }
+  }
+  if (idx == -1) 
+  {
+    return null;// all null
+  }
+
+  var min = graphs[idx].fX[0] - times[idx]; 
+  var max = graphs[idx].fX[graphs[idx].fNpoints-1] - times[idx]; 
+  var dt = (max-min)/(graphs[idx].fNpoints -1); 
+
+
+  for (var i = 0; i < graphs.length; i++) 
+  {
+    if (graphs[i]==null) continue;
+    if (graphs[i].fX[0] -times[i]< min) min = graphs[i].fX[0]-times[i]; 
+    if (graphs[i].fX[graphs[i].fNpoints-1] > max) max = graphs[i].fX[graphs[i].fNpoints-1] - times[i]; 
+  }
+  var N = Math.floor((max-min)/dt+1); 
+
+  var x = RF.range(min,N,dt); 
+  var y= new Float32Array(N); 
+
+  for (var i = 0; i < N; i++) 
+  {
+    for (var j = 0; j < graphs.length; j++)
+    {
+      if (graphs[j] == null) continue; 
+      var val =  RF.evalEven(graphs[j], x[i]-times[j]); 
+      if (!isNaN(val)) y[i] +=val; 
+    }
+  }
+
+  var ans = JSROOT.CreateTGraph(N,x,y); 
+  ans.fTitle = "Coherent Sum";
+  ans.InvertBit(JSROOT.BIT(18)); 
+  return ans; 
+
 }
