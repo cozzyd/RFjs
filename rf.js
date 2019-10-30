@@ -1023,7 +1023,7 @@ RF.InterferometricMap = function ( mapper, nx, xmin, xmax, ny=0, ymin=0,ymax=0, 
     return h; 
   }
 
-  this.drawXCorrs = function(where, style_fn = null, max_delay=0, zoom=100, h2_style='margin-top:40%;width:100%;text-align:center;') 
+  this.drawXCorrs = function(where, style_fn = null, max_delay=0, zoom=0, h2_style='margin-top:40%;width:100%;text-align:center;') 
   {
     this.init(); 
     var disp = new JSROOT.GridDisplay(where, "grid" + this.nant + "x" + this.nant); 
@@ -1058,7 +1058,14 @@ RF.InterferometricMap = function ( mapper, nx, xmin, xmax, ny=0, ymin=0,ymax=0, 
                var hist = painter.GetObject().fHistogram; 
                painter.root_pad().fGridx = 1; 
                painter.root_pad().fGridy = 1; 
-               painter.frame_painter().Zoom("x",-zoom,zoom); 
+               if (zoom)
+               {
+                 painter.frame_painter().Zoom("x",-zoom,zoom); 
+               }
+               else if (max_delay) 
+               {
+                 painter.frame_painter().Zoom("x",-max_delay,max_delay); 
+               }
                JSROOT.redraw(painter.divid, hist, ""); 
             }
             
