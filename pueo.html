@@ -33,17 +33,17 @@
         {
           entries = 0; 
 
-          hres = JSROOT.CreateHistogram("TH2D", 100,100) ;
-          hres_with_nadir = JSROOT.CreateHistogram("TH2D", 100,100) ;
+          hres = JSROOT.CreateHistogram("TH2D", 100,240) ;
+          hres_with_nadir = JSROOT.CreateHistogram("TH2D", 100,240) ;
 
-          hres.fXaxis.fXmin=-10; 
-          hres.fXaxis.fXmax=10; 
-          hres_with_nadir.fXaxis.fXmin=-10; 
-          hres_with_nadir.fXaxis.fXmax=10; 
-          hres.fYaxis.fXmin=-5; 
-          hres.fYaxis.fXmax=5; 
-          hres_with_nadir.fYaxis.fXmin=-5; 
-          hres_with_nadir.fYaxis.fXmax=5; 
+          hres.fXaxis.fXmin=-5; 
+          hres.fXaxis.fXmax=5; 
+          hres_with_nadir.fXaxis.fXmin=-5; 
+          hres_with_nadir.fXaxis.fXmax=5; 
+          hres.fYaxis.fXmin=-3; 
+          hres.fYaxis.fXmax=3; 
+          hres_with_nadir.fYaxis.fXmin=-3; 
+          hres_with_nadir.fYaxis.fXmax=3; 
 
 
           hres.fTitle="Resolution (no nadir)"
@@ -220,8 +220,8 @@ for (var i = 0; i < xant.length + xnadir.length; i++)
 var mapper_ang = RF.AngleMapper(ants,c); 
 var mapper_ang_with_nadir = RF.AngleMapper(ants_with_nadir,c); 
 
-var map_ang = new RF.InterferometricMap(mapper_ang, 100,-10,10,100,-10,0,false,false); 
-var map_ang_with_nadir = new RF.InterferometricMap(mapper_ang_with_nadir, 100,-10,10,100,-10,0,false,false); 
+var map_ang = new RF.InterferometricMap(mapper_ang, 100,-10,10,100,-8,-4,false,false); 
+var map_ang_with_nadir = new RF.InterferometricMap(mapper_ang_with_nadir, 100,-10,10,100,-8,-4,false,false); 
 
 map_ang.setTitle("No Nadir"); 
 map_ang_with_nadir.setTitle("With Nadir"); 
