@@ -10,10 +10,14 @@
 
       <script type="text/javascript">
 
-        function runElement(which) 
+        function runElement(which, N=1) 
         {
           var f = new Function(document.getElementById(which).value); 
-          f(); 
+          if (N==null || N<1) N =1;
+          for (var i = 0; i < N; i++) 
+          {
+            f(); 
+          }
         }
 
         var hres = null;
@@ -116,8 +120,9 @@
       <tr> 
         <td rowspan=5> 
 
-        <input type="button" value="Run" onClick="clearCanvases(); runElement('js1');"> 
-        <input type="button" value="Reset" onClick="clearCanvases(); setupHists()">; 
+        <input type="button" value="Run" onClick="clearCanvases(); runElement('js1', parseInt(document.getElementById('run_N').value))"> 
+        ntimes: <input value="1" size=5 id="run_N"> 
+        <input type="button" value="Reset" onClick="clearCanvases(); setupHists()"> 
 <textarea id='js1' cols=80 rows=120> 
 // setup
 JSROOT.gStyle.Palette = 87; 
