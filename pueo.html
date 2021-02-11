@@ -237,8 +237,6 @@ console.log(map_maxes);
 console.log(map_maxes_with_nadir);
 hres.Fill(map_maxes.x-phi, map_maxes.y-theta); 
 hres_with_nadir.Fill(map_maxes_with_nadir.x-phi, map_maxes_with_nadir.y-theta); 
-//hres.fEntries =++entries;
-//hres_with_nadir.fEntries = entries; 
 hres.fStats = true; 
 hres_with_nadir.fStats = true; 
          
@@ -247,8 +245,9 @@ JSROOT.redraw('c3', hres,"colz");
 JSROOT.redraw('c4', hres_with_nadir,"colz"); 
 
 var mg = JSROOT.CreateTMultiGraph.apply(0,gs_with_nadir);
-mg.fTitle = "The graphs;ns;V"; 
+mg.fTitle = "The graphs"; 
 JSROOT.draw('c5', mg,'al'); 
+
 
 
         </textarea>
