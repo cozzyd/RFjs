@@ -1148,7 +1148,7 @@ RF.InterferometricMap = function ( mapper, nx, xmin, xmax, ny=0, ymin=0,ymax=0, 
 //        console.log(ix,iy, sum,norm);
         var ibin = (this.ndims == 1 ? ix +1 : (this.nx+2) * (iy+1) + ix+1) ;
 
-        var add_to = avg ? (ndim == 1 ? this.hist.getBinContent(ix+1) : this.hist.getBinContent(ix+1,iy+1)) * this.navg : 0;
+        var add_to = avg ? (this.ndims == 1 ? this.hist.getBinContent(ix+1) : this.hist.getBinContent(ix+1,iy+1)) * this.navg : 0;
 
         var nsum = avg ? (this.navg+1) : 1; 
         var val = norm ? sum/norm : 0; 
