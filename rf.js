@@ -652,7 +652,8 @@ RF.Antenna = function(x,y,z, dx=1,dy=0,dz=0, max_phi=180,max_theta=90)
 {
   var ant = {};
   ant.pos = [x,y,z];
-  ant.bore = [dx,dy,dz]; 
+  var bore_mag = Math.sqrt(dx*dx+dy*dy+dz*dz);
+  ant.bore = [dx/bore_mag,dy/bore_mag,dz/bore_mag]; 
   ant.phi_width = max_phi;
   ant.theta_width = max_theta; 
   return ant; 
@@ -881,7 +882,7 @@ RF.InterferometricMap = function ( mapper, nx, xmin, xmax, ny=0, ymin=0,ymax=0, 
 
   this.soln = RF.createArray(nx,ny); 
 
-  this.usepair = RF.createArray(nx,ny);
+  this.usepair = RF.createArray(mapper.nant,mapper.nant);
   this.xwrap = xwrap;
   this.ywrap = ywrap;
   
@@ -1181,7 +1182,7 @@ RF.InterferometricMap = function ( mapper, nx, xmin, xmax, ny=0, ymin=0,ymax=0, 
            if (val > max) 
            {
               var x = hist.fXaxis.GetBinCenter(i);
-              var y = this.ndim > 1 ?  hist.fYaxis.GetBinCenter(j) : 0;
+              var y = this.ndims > 1 ?  hist.fYaxis.GetBinCenter(j) : 0;
               if (maxes.length > 0) 
               {
                 var too_close = false; 
@@ -1239,6 +1240,8 @@ RF.InterferometricMap = function ( mapper, nx, xmin, xmax, ny=0, ymin=0,ymax=0, 
         }
 
       }
+
+//      console.log(max_x,max_y,max); 
 
       var this_max= { x: max_x, y: max_y, max: max};
       maxes.push(this_max); 

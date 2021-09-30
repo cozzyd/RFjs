@@ -1,0 +1,326 @@
+<html>
+  <head> 
+
+      <title> PUEO Examples </title> 
+
+      <script type="text/javascript" src="https://root.cern/js/5.9.1/scripts/JSRootCore.js?2d&hierarchy&io&tree"> </script>
+      <script type="text/javascript" src="KissFFT.js"></script>
+      <script type="text/javascript" src="FFT.js"></script>
+      <script type="text/javascript" src="rf.js"></script>
+
+      <script type="text/javascript">
+
+        function runElement(which, N=1) 
+        {
+          var f = new Function(document.getElementById(which).value); 
+          if (N==null || N<1) N =1;
+          for (var i = 0; i < N; i++) 
+          {
+            f(); 
+          }
+        }
+
+        var hres = null;
+        var hres_with_nadir = null;
+        var entries = 0; 
+
+        var first = true; 
+        function clearCanvases()
+        {
+           if (!first) 
+           {
+             ['c1','c2','c3','c4','c5'].map(JSROOT.cleanup); 
+           }
+           first = false; 
+         }
+        function setupHists() 
+        {
+          entries = 0; 
+
+          hres = JSROOT.CreateHistogram("TH2D", 120,100) ;
+          hres_with_nadir = JSROOT.CreateHistogram("TH2D", 120,100) ;
+
+          hres.fXaxis.fXmin=-6; 
+          hres.fXaxis.fXmax=6; 
+          hres_with_nadir.fXaxis.fXmin=-6; 
+          hres_with_nadir.fXaxis.fXmax=6; 
+          hres.fYaxis.fXmin=-2; 
+          hres.fYaxis.fXmax=2; 
+          hres_with_nadir.fYaxis.fXmin=-2; 
+          hres_with_nadir.fYaxis.fXmax=2; 
+
+
+          hres.fTitle="Resolution (no nadir)"
+          hres_with_nadir.fTitle="Resolution (with nadir)"
+          hres.fXaxis.fTitle="#Delta #phi"
+          hres_with_nadir.fXaxis.fTitle="#Delta phi"
+          hres.fYaxis.fTitle="#Delta #theta"
+          hres_with_nadir.fYaxis.fTitle="#Delta theta"
+
+
+        }
+
+        function start() 
+        {
+           setupHists(); 
+           runElement['js1']; 
+        }
+
+     
+      </script>
+
+      <style>
+        td 
+        { 
+          width: 600px; 
+          height: 300px; 
+        }
+
+        td div 
+        { 
+          height: 100% 
+        } 
+
+        textarea { 
+          background-color: #111; 
+          color: #0e0; 
+          font-family: monospace;
+        }
+
+        body
+        { 
+           max-width: 1200px; 
+           margin: 40px ; 
+           line-height: 1.5; 
+           color: 222; 
+        }
+
+        h1,h2,h3 
+        {
+           line-height: 1.2; 
+           color: #4682b4; 
+        }
+
+        hr
+        {
+           color: #b0c4de; 
+            height: 2px; 
+        }
+
+      </style>
+  </head>
+
+  <body onLoad="start()">
+
+
+  <h1>PUEO RESOLUTION</h1>
+
+  <hr> 
+   <table>
+      <tr> 
+        <td rowspan=5> 
+
+        <input type="button" value="Run" onClick="clearCanvases(); runElement('js1', parseInt(document.getElementById('run_N').value))"> 
+        ntimes: <input value="1" size=5 id="run_N"> 
+        <input type="button" value="Reset" onClick="clearCanvases(); setupHists()"> 
+<textarea id='js1' cols=80 rows=120> 
+// setup
+JSROOT.gStyle.Palette = 87; 
+JSROOT.gStyle.fNumberContours=255; 
+ 
+var N = 256; //number of samples
+
+
+
+
+
+var tmin = -30;  //minimum time for each waveform
+var dt =0.25; //time step
+var filter_b = [   0.03049,   0.00000,  -0.12194,   0.00000,   0.18291,   0.00000,  -0.12194,   0.00000,   0.03049] 
+var filter_a = [1.000000,  -3.171321,   5.099745,  -5.524043,   4.477409,  -2.659779,   1.115129,  -0.307057,   0.047663] 
+
+var noise = 5; 
+var dist = 5; 
+var signal_amp = 50;
+var signal_width = 0.5; 
+var c = 11.8;  //inches / ns 
+
+//coordinates of antennas (INCHES) 
+var xant = [39.6, 39.6, 31.7,38.25, 31.7, 76.3, 85, 88, 85, 76.3, 76.3, 85, 88, 85, 76.3, 76.3, 85, 88, 85, 76.3];
+var yant = [-10.7, 10.7, -18.3, 0, 18.3, -44, -23, 0, 23, 44, -44, -23, 0, 23, 44, -44, -23, 0, 23, 44]; 
+var zant = [-51.6,-51.6, -76.5, -76.5,-76.5, -196,-196,-196-196,-196, -224.75,-224.75,-224,75, -224.75, -224.75, -253.5, -253.5, -253.5, -253.5, -253.5]; 
+
+var xnadir = [54,62,54];
+var ynadir = [-31.25,0,31.25];
+var znadir = [-345,-345,-345];
+
+//incoming direction
+var phi = 0; 
+var theta = -6; 
+
+
+
+
+//done with settings
+var cos_phi = Math.cos(phi*Math.PI/180); 
+var sin_phi = Math.sin(phi*Math.PI/180); 
+var cos_theta = Math.cos(theta*Math.PI/180); 
+var sin_theta = Math.sin(theta*Math.PI/180); 
+
+// direction vector
+var k = [ cos_phi*cos_theta,sin_phi*cos_theta,sin_theta];  
+
+var ts = RF.range(tmin, N,dt); 
+
+var gs = []; 
+var ants = []; 
+
+var gs_with_nadir = []; 
+var ants_with_nadir = []; 
+for (var i = 0; i < xant.length + xnadir.length; i++) 
+{
+ // figure out the correct time at this antenna, t=0 at 0,0,0
+
+  var x = i < xant.length ? xant[i] : xnadir[i-xant.length]; 
+  var y = i < xant.length ? yant[i] : ynadir[i-xant.length]; 
+  var z = i < xant.length ? zant[i] : znadir[i-xant.length]; 
+  var X = [x,y,z]; 
+  var t_signal = -RF.dotProduct(X,k)/c; 
+
+  //start with some noise
+  var ys = RF.randomGaussian(N,0,noise); 
+
+  //now add the signal
+  for (var j = 0; j < N; j++) 
+  {
+    ys[j] += signal_amp * Math.exp( -Math.pow(ts[j]-t_signal,2)/signal_width);
+  }
+
+  var g = JSROOT.CreateTGraph(N, ts,ys); 
+  g.InvertBit(JSROOT.BIT(18)); 
+  //now filter 
+  RF.IIRFilter(g,filter_b, filter_a); 
+
+
+  //needed for angle mapper
+  //TODO: could include boresights if doing whole payload
+  var ant = RF.Antenna(x,y,z);
+
+  if (i < xant.length) 
+  {
+      gs.push(g); 
+      ants.push(ant); 
+  }
+
+  gs_with_nadir.push(g); 
+  ants_with_nadir.push(ant) 
+
+  g.fLineColor=1+i; 
+  g.fName='g'+i; 
+  g.fTitle='graphs;ns;V'; 
+}
+
+
+//set up angle mapper for all antennas
+var mapper_ang = RF.AngleMapper(ants,c); 
+var mapper_ang_with_nadir = RF.AngleMapper(ants_with_nadir,c); 
+
+var map_ang = new RF.InterferometricMap(mapper_ang, 120,-6,6,100,-8,-4,false,false); 
+var map_ang_with_nadir = new RF.InterferometricMap(mapper_ang_with_nadir, 120,-6,6,100,-8,-4,false,false); 
+
+map_ang.setTitle("No Nadir"); 
+map_ang_with_nadir.setTitle("With Nadir"); 
+map_ang.compute(gs.slice(0,x.length)); 
+map_ang_with_nadir.compute(gs_with_nadir.slice(0,gs_with_nadir.length)); 
+
+JSROOT.draw('c1', map_ang.hist,"colz"); 
+JSROOT.draw('c2', map_ang_with_nadir.hist,"colz"); 
+
+map_maxes = map_ang.getMaxes()[0];
+map_maxes_with_nadir = map_ang_with_nadir.getMaxes()[0];
+console.log(map_maxes);
+console.log(map_maxes_with_nadir);
+hres.Fill(map_maxes.x-phi, map_maxes.y-theta); 
+hres_with_nadir.Fill(map_maxes_with_nadir.x-phi, map_maxes_with_nadir.y-theta); 
+hres.fStats = true; 
+hres_with_nadir.fStats = true; 
+         
+
+JSROOT.redraw('c3', hres,"colz"); 
+JSROOT.redraw('c4', hres_with_nadir,"colz"); 
+
+var mg = JSROOT.CreateTMultiGraph.apply(0,gs_with_nadir);
+mg.fTitle = "The graphs"; 
+JSROOT.draw('c5', mg,'al'); 
+
+
+
+        </textarea>
+      </td>
+
+  <td>
+
+        Map with no nadir
+        <div id="c1" >
+        </div>
+
+      </td>
+    </tr>
+
+    <tr>
+      <td>
+        Map with nadir
+        <div id="c2" >
+        </div>
+      </td>
+    </tr>
+
+
+    <tr>
+      <td>
+        Resolution with no nadir
+        <div id="c3" >
+        </div>
+      </td>
+    </tr>
+
+    <tr>
+      <td>
+        Resolution with nadir
+        <div id="c4" >
+        </div>
+      </td>
+    </tr>
+
+    <tr>
+  <td>
+        Graphs
+        <div id="c5" >
+        </div>
+      </td>
+
+    </tr>
+
+
+
+
+  </table>
+
+
+  
+
+  </body>
+</html>
+
+
+
+
+
+
+
+
+
+  
+  
+
+
