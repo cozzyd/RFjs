@@ -885,6 +885,7 @@ RF.InterferometricMap = function ( mapper, nx, xmin, xmax, ny=0, ymin=0,ymax=0, 
   this.usepair = RF.createArray(mapper.nant,mapper.nant);
   this.xwrap = xwrap;
   this.ywrap = ywrap;
+  this.channelNames = function(i) { return i.toString(); }; 
   
   this.nx = nx; 
   this.ny = this.ndims  ==1 ? 1 : ny; 
@@ -1037,7 +1038,7 @@ RF.InterferometricMap = function ( mapper, nx, xmin, xmax, ny=0, ymin=0,ymax=0, 
 
         var g = i == j ?  RF.crossCorrelation(this.channels[i], this.channels[i]) : this.xcorrs[i][j]; 
         if (style_fn!=null) style_fn(g); 
-        g.fTitle = i + " WITH  " + j; 
+        g.fTitle = this.channelNames(i) + " WITH  " + this.channelNames(j); 
         var histo = JSROOT.CreateHistogram("TH1I",100); 
         histo.fName = g.fName + "_h";
         histo.fTitle = g.fTitle;
